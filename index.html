@@ -65,11 +65,11 @@
         }
         
         .piano {
-            display: flex;
-            justify-content: center;
-            margin: 20px 0;
+            display: block;
+            margin: 20px auto;
             position: relative;
             height: 200px;
+            width: 1764px; /* 42オクターブ * 42px */
         }
         
         .white-key {
@@ -78,8 +78,7 @@
             background: white;
             border: 2px solid #333;
             cursor: pointer;
-            position: relative;
-            margin-right: 2px;
+            position: absolute;
         }
         
         .white-key:hover {
@@ -274,6 +273,8 @@
                 const whiteKeys = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
                 const blackKeys = ['C#', 'D#', null, 'F#', 'G#', 'A#', null];
                 
+                let whiteKeyIndex = 0;
+                
                 for (let octave = 0; octave <= 5; octave++) {
                     for (let i = 0; i < whiteKeys.length; i++) {
                         const note = whiteKeys[i];
@@ -281,6 +282,7 @@
                         key.className = 'white-key';
                         key.dataset.note = note + octave;
                         key.dataset.frequency = this.noteToFrequency(note + octave);
+                        key.style.left = (whiteKeyIndex * 42) + 'px';
                         
                         const label = document.createElement('div');
                         label.className = 'key-label';
@@ -297,7 +299,7 @@
                             blackKey.className = 'black-key';
                             blackKey.dataset.note = blackNote + octave;
                             blackKey.dataset.frequency = this.noteToFrequency(blackNote + octave);
-                            blackKey.style.left = (key.offsetLeft + 28) + 'px';
+                            blackKey.style.left = (whiteKeyIndex * 42 + 28) + 'px';
                             
                             const blackLabel = document.createElement('div');
                             blackLabel.className = 'key-label';
@@ -307,6 +309,8 @@
                             blackKey.addEventListener('click', () => this.handleKeyClick(blackNote + octave));
                             piano.appendChild(blackKey);
                         }
+                        
+                        whiteKeyIndex++;
                     }
                 }
             }
