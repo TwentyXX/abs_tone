@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ピアノ音感ゲーム</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        
+        .settings {
+            background: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .setting-group {
+            margin-bottom: 10px;
+        }
+        
+        label {
+            display: inline-block;
+            width: 120px;
+            font-weight: bold;
+        }
+        
+        select, input {
+            padding: 5px;
+            margin: 5px;
+        }
+        
+        .game-area {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .score {
+            font-size: 18px;
+            margin: 10px 0;
+        }
+        
+        .question {
+            font-size: 24px;
+            margin: 20px 0;
+            color: #2c3e50;
+        }
+        
+        .piano {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+            position: relative;
+            height: 200px;
+        }
+        
+        .white-key {
+            width: 40px;
+            height: 200px;
+            background: white;
+            border: 2px solid #333;
+            cursor: pointer;
+            position: relative;
+            margin-right: 2px;
+        }
+        
+        .white-key:hover {
+            background: #f0f0f0;
+        }
+        
+        .white-key.correct {
+            background: #4CAF50;
+        }
+        
+        .white-key.wrong {
+            background: #f44336;
+        }
+        
+        .black-key {
+            width: 25px;
+            height: 120px;
+            background: #333;
+            cursor: pointer;
+            position: absolute;
+            z-index: 2;
+        }
+        
+        .black-key:hover {
+            background: #555;
+        }
+        
+        .black-key.correct {
+            background: #4CAF50;
+        }
+        
+        .black-key.wrong {
+            background: #f44336;
+        }
+        
+        .key-label {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .black-key .key-label {
+            color: white;
+            bottom: 5px;
+        }
+        
+        .controls {
+            margin: 20px 0;
+        }
+        
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background: #3498db;
+            color: white;
+        }
+        
+        button:hover {
+            background: #2980b9;
+        }
+        
+        button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+        
+        .result {
+            font-size: 20px;
+            margin: 15px 0;
+            font-weight: bold;
+        }
+        
+        .correct-answer {
+            color: #27ae60;
+        }
+        
+        .wrong-answer {
+            color: #e74c3c;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ピアノ音感ゲーム</h1>
+        
+        <div class="settings">
+            <div class="setting-group">
+                <label>難易度:</label>
+                <select id="difficulty">
+                    <option value="single">単音</option>
+                    <option value="sequence">連音</option>
+                    <option value="chord">和音</option>
+                </select>
+            </div>
+            
+            <div class="setting-group">
+                <label>オクターブ範囲:</label>
+                <select id="octaveStart">
+                    <option value="0">0</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3" selected>3</option>
+                    <option value="4">4</option>
+                </select>
+                から
+                <select id="octaveEnd">
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5" selected>5</option>
+                </select>
+                まで
+            </div>
+            
+            <div class="setting-group" id="sequenceSettings" style="display: none;">
+                <label>連音数:</label>
+                <input type="number" id="sequenceCount" min="2" max="8" value="3">
+            </div>
+            
+            <div class="setting-group" id="chordSettings" style="display: none;">
+                <label>和音数:</label>
+                <input type="number" id="chordCount" min="2" max="6" value="3">
+            </div>
+        </div>
+        
+        <div class="game-area">
+            <div class="score">
+                正解: <span id="correct">0</span> / 不正解: <span id="wrong">0</span>
+            </div>
+            
+            <div class="question" id="question">
+                「新しいゲーム」を押して開始してください
+            </div>
+            
+            <div class="piano" id="piano">
+                <!-- ピアノ鍵盤はJavaScriptで生成 -->
+            </div>
+            
+            <div class="controls">
+                <button id="newGame">新しいゲーム</button>
+                <button id="playAgain" disabled>もう一度再生</button>
+                <button id="nextQuestion" disabled>次の問題</button>
+            </div>
+            
+            <div class="result" id="result"></div>
+        </div>
+    </div>
+
+    <script>
+        class PianoGame {
+            constructor() {
+                this.audioContext = null;
+                this.currentQuestion = null;
+                this.correctCount = 0;
+                this.wrongCount = 0;
+                this.gameActive = false;
+                this.answered = false;
+                
+                // 音名マッピング（日本式）
+                this.noteNames = {
+                    'C': 'ド', 'C#': 'デ', 'D': 'レ', 'D#': 'リ', 'E': 'ミ',
+                    'F': 'ファ', 'F#': 'フ', 'G': 'ソ', 'G#': 'サ', 'A': 'ラ',
+                    'A#': 'チ', 'B': 'シ'
+                };
+                
+                this.initializeAudio();
+                this.createPiano();
+                this.bindEvents();
+                this.updateDifficultySettings();
+            }
+            
+            async initializeAudio() {
+                try {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                } catch (error) {
+                    console.error('Audio context initialization failed:', error);
+                }
+            }
+            
+            createPiano() {
+                const piano = document.getElementById('piano');
+                piano.innerHTML = '';
+                
+                const whiteKeys = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+                const blackKeys = ['C#', 'D#', null, 'F#', 'G#', 'A#', null];
+                
+                for (let octave = 0; octave <= 5; octave++) {
+                    for (let i = 0; i < whiteKeys.length; i++) {
+                        const note = whiteKeys[i];
+                        const key = document.createElement('div');
+                        key.className = 'white-key';
+                        key.dataset.note = note + octave;
+                        key.dataset.frequency = this.noteToFrequency(note + octave);
+                        
+                        const label = document.createElement('div');
+                        label.className = 'key-label';
+                        label.textContent = this.noteNames[note] + octave;
+                        key.appendChild(label);
+                        
+                        key.addEventListener('click', () => this.handleKeyClick(note + octave));
+                        piano.appendChild(key);
+                        
+                        // 黒鍵を追加
+                        if (blackKeys[i]) {
+                            const blackNote = blackKeys[i];
+                            const blackKey = document.createElement('div');
+                            blackKey.className = 'black-key';
+                            blackKey.dataset.note = blackNote + octave;
+                            blackKey.dataset.frequency = this.noteToFrequency(blackNote + octave);
+                            blackKey.style.left = (key.offsetLeft + 28) + 'px';
+                            
+                            const blackLabel = document.createElement('div');
+                            blackLabel.className = 'key-label';
+                            blackLabel.textContent = this.noteNames[blackNote] + octave;
+                            blackKey.appendChild(blackLabel);
+                            
+                            blackKey.addEventListener('click', () => this.handleKeyClick(blackNote + octave));
+                            piano.appendChild(blackKey);
+                        }
+                    }
+                }
+            }
+            
+            noteToFrequency(note) {
+                const noteMap = {
+                    'C': 0, 'C#': 1, 'D': 2, 'D#': 3, 'E': 4, 'F': 5,
+                    'F#': 6, 'G': 7, 'G#': 8, 'A': 9, 'A#': 10, 'B': 11
+                };
+                
+                const octave = parseInt(note.slice(-1));
+                const noteName = note.slice(0, -1);
+                const noteNumber = noteMap[noteName];
+                
+                // A4 = 440Hz を基準とする
+                const A4 = 440;
+                const semitoneRatio = Math.pow(2, 1/12);
+                const A4NoteNumber = 9 + 4 * 12; // A4のノート番号
+                const currentNoteNumber = noteNumber + octave * 12;
+                
+                return A4 * Math.pow(semitoneRatio, currentNoteNumber - A4NoteNumber);
+            }
+            
+            async playNote(frequency, duration = 1.0) {
+                if (!this.audioContext) return;
+                
+                const oscillator = this.audioContext.createOscillator();
+                const gainNode = this.audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(this.audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
+                oscillator.type = 'sine';
+                
+                gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
+                
+                oscillator.start(this.audioContext.currentTime);
+                oscillator.stop(this.audioContext.currentTime + duration);
+            }
+            
+            async playSequence(notes, interval = 0.8) {
+                for (let i = 0; i < notes.length; i++) {
+                    setTimeout(() => {
+                        this.playNote(this.noteToFrequency(notes[i]));
+                    }, i * interval * 1000);
+                }
+            }
+            
+            async playChord(notes) {
+                notes.forEach(note => {
+                    this.playNote(this.noteToFrequency(note));
+                });
+            }
+            
+            generateQuestion() {
+                const difficulty = document.getElementById('difficulty').value;
+                const octaveStart = parseInt(document.getElementById('octaveStart').value);
+                const octaveEnd = parseInt(document.getElementById('octaveEnd').value);
+                
+                const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+                const availableNotes = [];
+                
+                for (let octave = octaveStart; octave <= octaveEnd; octave++) {
+                    notes.forEach(note => {
+                        availableNotes.push(note + octave);
+                    });
+                }
+                
+                let question = {};
+                
+                switch (difficulty) {
+                    case 'single':
+                        question.notes = [availableNotes[Math.floor(Math.random() * availableNotes.length)]];
+                        question.type = 'single';
+                        break;
+                        
+                    case 'sequence':
+                        const sequenceCount = parseInt(document.getElementById('sequenceCount').value);
+                        question.notes = [];
+                        for (let i = 0; i < sequenceCount; i++) {
+                            question.notes.push(availableNotes[Math.floor(Math.random() * availableNotes.length)]);
+                        }
+                        question.type = 'sequence';
+                        break;
+                        
+                    case 'chord':
+                        const chordCount = parseInt(document.getElementById('chordCount').value);
+                        question.notes = [];
+                        const usedNotes = new Set();
+                        while (question.notes.length < chordCount) {
+                            const note = availableNotes[Math.floor(Math.random() * availableNotes.length)];
+                            if (!usedNotes.has(note)) {
+                                question.notes.push(note);
+                                usedNotes.add(note);
+                            }
+                        }
+                        question.type = 'chord';
+                        break;
+                }
+                
+                return question;
+            }
+            
+            startNewGame() {
+                if (!this.audioContext) {
+                    this.initializeAudio();
+                }
+                
+                this.currentQuestion = this.generateQuestion();
+                this.gameActive = true;
+                this.answered = false;
+                
+                this.clearKeyHighlights();
+                document.getElementById('result').textContent = '';
+                document.getElementById('playAgain').disabled = false;
+                document.getElementById('nextQuestion').disabled = true;
+                
+                this.playCurrentQuestion();
+                this.updateQuestionDisplay();
+            }
+            
+            playCurrentQuestion() {
+                if (!this.currentQuestion) return;
+                
+                switch (this.currentQuestion.type) {
+                    case 'single':
+                        this.playNote(this.noteToFrequency(this.currentQuestion.notes[0]));
+                        break;
+                    case 'sequence':
+                        this.playSequence(this.currentQuestion.notes);
+                        break;
+                    case 'chord':
+                        this.playChord(this.currentQuestion.notes);
+                        break;
+                }
+            }
+            
+            updateQuestionDisplay() {
+                const questionEl = document.getElementById('question');
+                const difficulty = document.getElementById('difficulty').value;
+                
+                switch (difficulty) {
+                    case 'single':
+                        questionEl.textContent = '単音を聞いて、該当する鍵盤をクリックしてください';
+                        break;
+                    case 'sequence':
+                        questionEl.textContent = '連音を聞いて、順番に鍵盤をクリックしてください';
+                        break;
+                    case 'chord':
+                        questionEl.textContent = '和音を聞いて、該当する鍵盤をすべてクリックしてください';
+                        break;
+                }
+            }
+            
+            handleKeyClick(note) {
+                if (!this.gameActive || this.answered) return;
+                
+                const difficulty = document.getElementById('difficulty').value;
+                
+                if (difficulty === 'single') {
+                    this.checkSingleAnswer(note);
+                } else {
+                    // 連音・和音の場合は複数選択を処理
+                    this.toggleKeySelection(note);
+                }
+            }
+            
+            checkSingleAnswer(selectedNote) {
+                const correctNote = this.currentQuestion.notes[0];
+                const isCorrect = selectedNote === correctNote;
+                
+                this.showResult(isCorrect, [correctNote], [selectedNote]);
+                this.answered = true;
+                this.gameActive = false;
+                
+                if (isCorrect) {
+                    this.correctCount++;
+                } else {
+                    this.wrongCount++;
+                }
+                
+                this.updateScore();
+                document.getElementById('nextQuestion').disabled = false;
+            }
+            
+            toggleKeySelection(note) {
+                const key = document.querySelector(`[data-note="${note}"]`);
+                if (key.classList.contains('selected')) {
+                    key.classList.remove('selected');
+                    key.style.backgroundColor = '';
+                } else {
+                    key.classList.add('selected');
+                    key.style.backgroundColor = '#3498db';
+                }
+            }
+            
+            checkMultipleAnswer() {
+                const selectedKeys = document.querySelectorAll('.selected');
+                const selectedNotes = Array.from(selectedKeys).map(key => key.dataset.note);
+                const correctNotes = this.currentQuestion.notes;
+                
+                const isCorrect = selectedNotes.length === correctNotes.length &&
+                                selectedNotes.every(note => correctNotes.includes(note));
+                
+                this.showResult(isCorrect, correctNotes, selectedNotes);
+                this.answered = true;
+                this.gameActive = false;
+                
+                if (isCorrect) {
+                    this.correctCount++;
+                } else {
+                    this.wrongCount++;
+                }
+                
+                this.updateScore();
+                document.getElementById('nextQuestion').disabled = false;
+            }
+            
+            showResult(isCorrect, correctNotes, selectedNotes) {
+                const resultEl = document.getElementById('result');
+                
+                this.clearKeyHighlights();
+                
+                // 正解の鍵盤をハイライト
+                correctNotes.forEach(note => {
+                    const key = document.querySelector(`[data-note="${note}"]`);
+                    if (key) key.classList.add('correct');
+                });
+                
+                // 間違った選択をハイライト
+                selectedNotes.forEach(note => {
+                    if (!correctNotes.includes(note)) {
+                        const key = document.querySelector(`[data-note="${note}"]`);
+                        if (key) key.classList.add('wrong');
+                    }
+                });
+                
+                const correctNoteNames = correctNotes.map(note => {
+                    const noteName = note.slice(0, -1);
+                    const octave = note.slice(-1);
+                    return this.noteNames[noteName] + octave;
+                }).join(', ');
+                
+                if (isCorrect) {
+                    resultEl.innerHTML = `<span class="correct-answer">正解！ ${correctNoteNames}</span>`;
+                } else {
+                    resultEl.innerHTML = `<span class="wrong-answer">不正解。正解は ${correctNoteNames} でした。</span>`;
+                }
+            }
+            
+            clearKeyHighlights() {
+                const keys = document.querySelectorAll('.white-key, .black-key');
+                keys.forEach(key => {
+                    key.classList.remove('correct', 'wrong', 'selected');
+                    key.style.backgroundColor = '';
+                });
+            }
+            
+            updateScore() {
+                document.getElementById('correct').textContent = this.correctCount;
+                document.getElementById('wrong').textContent = this.wrongCount;
+            }
+            
+            updateDifficultySettings() {
+                const difficulty = document.getElementById('difficulty').value;
+                const sequenceSettings = document.getElementById('sequenceSettings');
+                const chordSettings = document.getElementById('chordSettings');
+                
+                sequenceSettings.style.display = difficulty === 'sequence' ? 'block' : 'none';
+                chordSettings.style.display = difficulty === 'chord' ? 'block' : 'none';
+            }
+            
+            bindEvents() {
+                document.getElementById('difficulty').addEventListener('change', () => {
+                    this.updateDifficultySettings();
+                });
+                
+                document.getElementById('newGame').addEventListener('click', () => {
+                    this.startNewGame();
+                });
+                
+                document.getElementById('playAgain').addEventListener('click', () => {
+                    this.playCurrentQuestion();
+                });
+                
+                document.getElementById('nextQuestion').addEventListener('click', () => {
+                    const difficulty = document.getElementById('difficulty').value;
+                    if (difficulty !== 'single' && !this.answered) {
+                        this.checkMultipleAnswer();
+                    } else {
+                        this.startNewGame();
+                    }
+                });
+            }
+        }
+        
+        // ゲーム開始
+        window.addEventListener('load', () => {
+            new PianoGame();
+        });
+    </script>
+</body>
+</html>
