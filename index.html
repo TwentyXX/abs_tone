@@ -472,6 +472,9 @@
             handleKeyClick(note) {
                 if (!this.gameActive || this.answered) return;
                 
+                // クリックした鍵盤の音を再生
+                this.playNote(this.noteToFrequency(note));
+                
                 // すべての難易度で選択をトグルする
                 this.toggleKeySelection(note);
                 
