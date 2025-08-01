@@ -228,6 +228,7 @@
             <div class="controls">
                 <button id="newGame">新しいゲーム</button>
                 <button id="playAgain" disabled>もう一度再生</button>
+                <button id="checkAnswer" disabled>答え合わせ (スペースキー)</button>
                 <button id="nextQuestion" disabled>次の問題</button>
             </div>
             
@@ -428,6 +429,7 @@
                 this.clearKeyHighlights();
                 document.getElementById('result').textContent = '';
                 document.getElementById('playAgain').disabled = false;
+                document.getElementById('checkAnswer').disabled = true;
                 document.getElementById('nextQuestion').disabled = true;
                 
                 this.playCurrentQuestion();
@@ -456,13 +458,13 @@
                 
                 switch (difficulty) {
                     case 'single':
-                        questionEl.textContent = '単音を聞いて、該当する鍵盤をクリックしてください';
+                        questionEl.textContent = '単音を聞いて、該当する鍵盤をクリックし、スペースキーで答え合わせしてください';
                         break;
                     case 'sequence':
-                        questionEl.textContent = '連音を聞いて、順番に鍵盤をクリックしてください';
+                        questionEl.textContent = '連音を聞いて、順番に鍵盤をクリックし、スペースキーで答え合わせしてください';
                         break;
                     case 'chord':
-                        questionEl.textContent = '和音を聞いて、該当する鍵盤をすべてクリックしてください';
+                        questionEl.textContent = '和音を聞いて、該当する鍵盤をすべてクリックし、スペースキーで答え合わせしてください';
                         break;
                 }
             }
@@ -470,32 +472,17 @@
             handleKeyClick(note) {
                 if (!this.gameActive || this.answered) return;
                 
-                const difficulty = document.getElementById('difficulty').value;
+                // すべての難易度で選択をトグルする
+                this.toggleKeySelection(note);
                 
-                if (difficulty === 'single') {
-                    this.checkSingleAnswer(note);
-                } else {
-                    // 連音・和音の場合は複数選択を処理
-                    this.toggleKeySelection(note);
-                }
+                // 選択状態に応じて答え合わせボタンを有効化
+                this.updateCheckAnswerButton();
             }
             
-            checkSingleAnswer(selectedNote) {
-                const correctNote = this.currentQuestion.notes[0];
-                const isCorrect = selectedNote === correctNote;
-                
-                this.showResult(isCorrect, [correctNote], [selectedNote]);
-                this.answered = true;
-                this.gameActive = false;
-                
-                if (isCorrect) {
-                    this.correctCount++;
-                } else {
-                    this.wrongCount++;
-                }
-                
-                this.updateScore();
-                document.getElementById('nextQuestion').disabled = false;
+            updateCheckAnswerButton() {
+                const selectedKeys = document.querySelectorAll('.selected');
+                const checkAnswerBtn = document.getElementById('checkAnswer');
+                checkAnswerBtn.disabled = selectedKeys.length === 0;
             }
             
             toggleKeySelection(note) {
@@ -509,13 +496,26 @@
                 }
             }
             
-            checkMultipleAnswer() {
+            checkAnswer() {
+                if (!this.gameActive || this.answered) return;
+                
                 const selectedKeys = document.querySelectorAll('.selected');
                 const selectedNotes = Array.from(selectedKeys).map(key => key.dataset.note);
                 const correctNotes = this.currentQuestion.notes;
                 
-                const isCorrect = selectedNotes.length === correctNotes.length &&
-                                selectedNotes.every(note => correctNotes.includes(note));
+                let isCorrect = false;
+                
+                if (this.currentQuestion.type === 'single') {
+                    isCorrect = selectedNotes.length === 1 && selectedNotes[0] === correctNotes[0];
+                } else if (this.currentQuestion.type === 'sequence') {
+                    // 連音の場合は順序も考慮
+                    isCorrect = selectedNotes.length === correctNotes.length &&
+                               selectedNotes.every((note, index) => note === correctNotes[index]);
+                } else if (this.currentQuestion.type === 'chord') {
+                    // 和音の場合は順序は関係なし
+                    isCorrect = selectedNotes.length === correctNotes.length &&
+                               selectedNotes.every(note => correctNotes.includes(note));
+                }
                 
                 this.showResult(isCorrect, correctNotes, selectedNotes);
                 this.answered = true;
@@ -528,6 +528,7 @@
                 }
                 
                 this.updateScore();
+                document.getElementById('checkAnswer').disabled = true;
                 document.getElementById('nextQuestion').disabled = false;
             }
             
@@ -598,12 +599,23 @@
                     this.playCurrentQuestion();
                 });
                 
+                document.getElementById('checkAnswer').addEventListener('click', () => {
+                    this.checkAnswer();
+                });
+                
                 document.getElementById('nextQuestion').addEventListener('click', () => {
-                    const difficulty = document.getElementById('difficulty').value;
-                    if (difficulty !== 'single' && !this.answered) {
-                        this.checkMultipleAnswer();
-                    } else {
-                        this.startNewGame();
+                    this.startNewGame();
+                });
+                
+                // スペースキーで答え合わせ
+                document.addEventListener('keydown', (event) => {
+                    if (event.code === 'Space') {
+                        event.preventDefault();
+                        if (this.gameActive && !this.answered) {
+                            this.checkAnswer();
+                        } else if (this.answered) {
+                            this.startNewGame();
+                        }
                     }
                 });
             }
