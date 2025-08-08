@@ -820,22 +820,25 @@
             playCurrentQuestion() {
                 if (!this.currentQuestion) return;
                 
-                switch (this.currentQuestion.type) {
-                    case 'single':
-                        this.playNote(this.noteToFrequency(this.currentQuestion.notes[0]));
-                        break;
-                    case 'sequence':
-                        this.playSequence(this.currentQuestion.notes);
-                        break;
-                    case 'chord':
-                        this.playChord(this.currentQuestion.notes);
-                        break;
-                }
-                
-                // 初心者モードの場合は音名を読み上げ
+                // 初心者モードの場合は音名を読み上げ（ピアノ音より先に）
                 if (this.beginnerMode) {
                     this.speakNotes(this.currentQuestion.notes);
                 }
+                
+                // ピアノ音を0.2秒遅らせて再生
+                setTimeout(() => {
+                    switch (this.currentQuestion.type) {
+                        case 'single':
+                            this.playNote(this.noteToFrequency(this.currentQuestion.notes[0]));
+                            break;
+                        case 'sequence':
+                            this.playSequence(this.currentQuestion.notes);
+                            break;
+                        case 'chord':
+                            this.playChord(this.currentQuestion.notes);
+                            break;
+                    }
+                }, 200);
             }
             
             updateQuestionDisplay() {
@@ -1140,34 +1143,40 @@
                 
                 const noteNames = notes.map(note => {
                     const noteName = note.slice(0, -1);
-                    const octave = note.slice(-1);
                     if (this.octaveIgnoreMode) {
                         return this.speechNoteNames[noteName];
                     } else {
-                        return this.speechNoteNames[noteName] + octave + 'の音';
+                        return this.speechNoteNames[noteName];
                     }
                 });
                 
                 let speechText = '';
                 if (this.currentQuestion.type === 'single') {
-                    speechText = `${noteNames[0]}です`;
+                    speechText = noteNames[0];
                 } else if (this.currentQuestion.type === 'sequence') {
-                    speechText = `${noteNames.join('、')}の順番です`;
+                    speechText = noteNames.join('、');
                 } else if (this.currentQuestion.type === 'chord') {
-                    speechText = `${noteNames.join('と')}の和音です`;
+                    speechText = noteNames.join('、');
                 }
                 
                 const utterance = new SpeechSynthesisUtterance(speechText);
                 utterance.lang = 'ja-JP';
                 utterance.rate = 0.8;
-                utterance.pitch = 1.0;
+                utterance.pitch = 0.5; // 男性の声に設定
                 utterance.volume = 0.8;
                 
-                // 音声読み上げを少し遅延させて、音の再生後に実行
-                setTimeout(() => {
-                    this.speechSynthesis.speak(utterance);
-                }, this.currentQuestion.type === 'sequence' ? 
-                    (this.currentQuestion.notes.length * 800 + 500) : 1500);
+                // 利用可能な音声から男性の声を選択
+                const voices = this.speechSynthesis.getVoices();
+                const maleVoice = voices.find(voice => 
+                    voice.lang.includes('ja') && 
+                    (voice.name.includes('Male') || voice.name.includes('男性') || voice.name.includes('Ichiro'))
+                );
+                if (maleVoice) {
+                    utterance.voice = maleVoice;
+                }
+                
+                // 音声読み上げを先に開始
+                this.speechSynthesis.speak(utterance);
             }
             
             updateDifficultySettings() {
