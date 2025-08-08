@@ -408,6 +408,7 @@
                     key.className = 'white-key';
                     key.dataset.note = note + octave;
                     key.dataset.baseNote = note;
+                    key.setAttribute('data-base-note', note);
                     key.dataset.frequency = this.noteToFrequency(note + octave);
                     key.style.left = (whiteKeyIndex * keyWidth) + 'px';
                     
@@ -426,6 +427,7 @@
                         blackKey.className = 'black-key';
                         blackKey.dataset.note = blackNote + octave;
                         blackKey.dataset.baseNote = blackNote;
+                        blackKey.setAttribute('data-base-note', blackNote);
                         blackKey.dataset.frequency = this.noteToFrequency(blackNote + octave);
                         blackKey.style.left = (whiteKeyIndex * keyWidth + blackKeyOffset) + 'px';
                         
@@ -852,19 +854,37 @@
                 
                 this.clearKeyHighlights();
                 
-                // 正解の鍵盤をハイライト
-                correctNotes.forEach(note => {
-                    const key = document.querySelector(`[data-note="${note}"]`);
-                    if (key) key.classList.add('correct');
-                });
-                
-                // 間違った選択をハイライト
-                selectedNotes.forEach(note => {
-                    if (!correctNotes.includes(note)) {
+                if (this.octaveIgnoreMode) {
+                    // オクターブ無視モードでは音名のみでハイライト
+                    const correctBaseNotes = correctNotes.map(note => note.slice(0, -1));
+                    correctBaseNotes.forEach(baseNote => {
+                        const key = document.querySelector(`[data-base-note="${baseNote}"]`);
+                        if (key) key.classList.add('correct');
+                    });
+                    
+                    // 間違った選択をハイライト
+                    const selectedKeys = document.querySelectorAll('.selected');
+                    selectedKeys.forEach(key => {
+                        const selectedBaseNote = key.dataset.baseNote;
+                        if (!correctBaseNotes.includes(selectedBaseNote)) {
+                            key.classList.add('wrong');
+                        }
+                    });
+                } else {
+                    // 通常モードでは完全一致でハイライト
+                    correctNotes.forEach(note => {
                         const key = document.querySelector(`[data-note="${note}"]`);
-                        if (key) key.classList.add('wrong');
-                    }
-                });
+                        if (key) key.classList.add('correct');
+                    });
+                    
+                    // 間違った選択をハイライト
+                    selectedNotes.forEach(note => {
+                        if (!correctNotes.includes(note)) {
+                            const key = document.querySelector(`[data-note="${note}"]`);
+                            if (key) key.classList.add('wrong');
+                        }
+                    });
+                }
                 
                 const correctNoteNames = correctNotes.map(note => {
                     const noteName = note.slice(0, -1);
