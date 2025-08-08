@@ -512,11 +512,18 @@
                 this.beginnerMode = false;
                 this.speechSynthesis = window.speechSynthesis;
                 
-                // 音名マッピング（日本式）
+                // 音名マッピング（日本式）- 鍵盤表示用
                 this.noteNames = {
                     'C': 'ド', 'C#': 'ダ', 'D': 'レ', 'D#': 'ロ', 'E': 'ミ',
                     'F': 'ナ', 'F#': 'ネ', 'G': 'ソ', 'G#': 'リ', 'A': 'ラ',
                     'A#': 'セ', 'B': 'シ'
+                };
+                
+                // 音名マッピング（読み上げ用）- 長音で聞き取りやすく
+                this.speechNoteNames = {
+                    'C': 'どお', 'C#': 'だあ', 'D': 'れえ', 'D#': 'ろお', 'E': 'みい',
+                    'F': 'なあ', 'F#': 'ねえ', 'G': 'そお', 'G#': 'りい', 'A': 'らあ',
+                    'A#': 'せえ', 'B': 'しい'
                 };
                 
                 this.initializeAudio();
@@ -1135,9 +1142,9 @@
                     const noteName = note.slice(0, -1);
                     const octave = note.slice(-1);
                     if (this.octaveIgnoreMode) {
-                        return this.noteNames[noteName];
+                        return this.speechNoteNames[noteName];
                     } else {
-                        return this.noteNames[noteName] + octave + 'の音';
+                        return this.speechNoteNames[noteName] + octave + 'の音';
                     }
                 });
                 
