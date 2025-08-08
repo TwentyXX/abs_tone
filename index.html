@@ -72,6 +72,10 @@
             width: 1764px; /* 42オクターブ * 42px */
         }
         
+        .piano.octave-ignore {
+            width: 504px; /* 12音 * 42px */
+        }
+        
         .white-key {
             width: 40px;
             height: 200px;
@@ -79,6 +83,10 @@
             border: 2px solid #333;
             cursor: pointer;
             position: absolute;
+        }
+        
+        .piano.octave-ignore .white-key {
+            width: 60px;
         }
         
         .white-key:hover {
@@ -100,6 +108,10 @@
             cursor: pointer;
             position: absolute;
             z-index: 2;
+        }
+        
+        .piano.octave-ignore .black-key {
+            width: 35px;
         }
         
         .black-key:hover {
@@ -288,6 +300,12 @@
                     秒
                 </span>
             </div>
+            
+            <div class="setting-group">
+                <label>
+                    <input type="checkbox" id="octaveIgnoreMode"> オクターブ無視モード
+                </label>
+            </div>
         </div>
         
         <div class="game-area">
@@ -336,6 +354,7 @@
                 this.autoNext = false;
                 this.autoNextDelay = 3;
                 this.autoNextTimeout = null;
+                this.octaveIgnoreMode = false;
                 
                 // 音名マッピング（日本式）
                 this.noteNames = {
@@ -367,18 +386,25 @@
                 
                 let whiteKeyIndex = 0;
                 
-                for (let octave = 2; octave <= 7; octave++) {
+                // オクターブ無視モードの場合は1オクターブのみ表示
+                const startOctave = this.octaveIgnoreMode ? 4 : 2;
+                const endOctave = this.octaveIgnoreMode ? 4 : 7;
+                const keyWidth = this.octaveIgnoreMode ? 63 : 42;
+                const blackKeyOffset = this.octaveIgnoreMode ? 42 : 28;
+                
+                for (let octave = startOctave; octave <= endOctave; octave++) {
                     for (let i = 0; i < whiteKeys.length; i++) {
                         const note = whiteKeys[i];
                         const key = document.createElement('div');
                         key.className = 'white-key';
                         key.dataset.note = note + octave;
+                        key.dataset.baseNote = note; // オクターブ無視用
                         key.dataset.frequency = this.noteToFrequency(note + octave);
-                        key.style.left = (whiteKeyIndex * 42) + 'px';
+                        key.style.left = (whiteKeyIndex * keyWidth) + 'px';
                         
                         const label = document.createElement('div');
                         label.className = 'key-label';
-                        label.textContent = this.noteNames[note] + octave;
+                        label.textContent = this.octaveIgnoreMode ? this.noteNames[note] : this.noteNames[note] + octave;
                         key.appendChild(label);
                         
                         key.addEventListener('click', () => this.handleKeyClick(note + octave));
@@ -390,12 +416,13 @@
                             const blackKey = document.createElement('div');
                             blackKey.className = 'black-key';
                             blackKey.dataset.note = blackNote + octave;
+                            blackKey.dataset.baseNote = blackNote; // オクターブ無視用
                             blackKey.dataset.frequency = this.noteToFrequency(blackNote + octave);
-                            blackKey.style.left = (whiteKeyIndex * 42 + 28) + 'px';
+                            blackKey.style.left = (whiteKeyIndex * keyWidth + blackKeyOffset) + 'px';
                             
                             const blackLabel = document.createElement('div');
                             blackLabel.className = 'key-label';
-                            blackLabel.textContent = this.noteNames[blackNote] + octave;
+                            blackLabel.textContent = this.octaveIgnoreMode ? this.noteNames[blackNote] : this.noteNames[blackNote] + octave;
                             blackKey.appendChild(blackLabel);
                             
                             blackKey.addEventListener('click', () => this.handleKeyClick(blackNote + octave));
@@ -525,6 +552,19 @@
                 this.autoNext = document.getElementById('autoNext').checked;
                 this.autoNextDelay = parseFloat(document.getElementById('autoNextDelay').value);
                 
+                // オクターブ無視モードの設定を取得
+                const newOctaveIgnoreMode = document.getElementById('octaveIgnoreMode').checked;
+                if (this.octaveIgnoreMode !== newOctaveIgnoreMode) {
+                    this.octaveIgnoreMode = newOctaveIgnoreMode;
+                    const piano = document.getElementById('piano');
+                    if (this.octaveIgnoreMode) {
+                        piano.classList.add('octave-ignore');
+                    } else {
+                        piano.classList.remove('octave-ignore');
+                    }
+                    this.createPiano();
+                }
+                
                 this.clearKeyHighlights();
                 document.getElementById('result').textContent = '';
                 document.getElementById('playAgain').disabled = false;
@@ -584,6 +624,10 @@
                 
                 if (this.timeBombMode) {
                     baseText += ' ⏰ 時限爆弾モード！';
+                }
+                
+                if (this.octaveIgnoreMode) {
+                    baseText += ' 🎵 オクターブ無視モード！';
                 }
                 
                 questionEl.textContent = baseText;
@@ -700,16 +744,33 @@
                 
                 let isCorrect = false;
                 
-                if (this.currentQuestion.type === 'single') {
-                    isCorrect = selectedNotes.length === 1 && selectedNotes[0] === correctNotes[0];
-                } else if (this.currentQuestion.type === 'sequence') {
-                    // 連音の場合は順序も考慮
-                    isCorrect = selectedNotes.length === correctNotes.length &&
-                               selectedNotes.every((note, index) => note === correctNotes[index]);
-                } else if (this.currentQuestion.type === 'chord') {
-                    // 和音の場合は順序は関係なし
-                    isCorrect = selectedNotes.length === correctNotes.length &&
-                               selectedNotes.every(note => correctNotes.includes(note));
+                if (this.octaveIgnoreMode) {
+                    // オクターブ無視モードでは音名のみで比較
+                    const selectedBaseNotes = Array.from(selectedKeys).map(key => key.dataset.baseNote);
+                    const correctBaseNotes = correctNotes.map(note => note.slice(0, -1));
+                    
+                    if (this.currentQuestion.type === 'single') {
+                        isCorrect = selectedBaseNotes.length === 1 && selectedBaseNotes[0] === correctBaseNotes[0];
+                    } else if (this.currentQuestion.type === 'sequence') {
+                        isCorrect = selectedBaseNotes.length === correctBaseNotes.length &&
+                                   selectedBaseNotes.every((note, index) => note === correctBaseNotes[index]);
+                    } else if (this.currentQuestion.type === 'chord') {
+                        isCorrect = selectedBaseNotes.length === correctBaseNotes.length &&
+                                   selectedBaseNotes.every(note => correctBaseNotes.includes(note));
+                    }
+                } else {
+                    // 通常モードでは完全一致
+                    if (this.currentQuestion.type === 'single') {
+                        isCorrect = selectedNotes.length === 1 && selectedNotes[0] === correctNotes[0];
+                    } else if (this.currentQuestion.type === 'sequence') {
+                        // 連音の場合は順序も考慮
+                        isCorrect = selectedNotes.length === correctNotes.length &&
+                                   selectedNotes.every((note, index) => note === correctNotes[index]);
+                    } else if (this.currentQuestion.type === 'chord') {
+                        // 和音の場合は順序は関係なし
+                        isCorrect = selectedNotes.length === correctNotes.length &&
+                                   selectedNotes.every(note => correctNotes.includes(note));
+                    }
                 }
                 
                 this.showResult(isCorrect, correctNotes, selectedNotes);
