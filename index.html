@@ -453,6 +453,12 @@
                     <input type="checkbox" id="darkMode"> ダークモード
                 </label>
             </div>
+            
+            <div class="setting-group">
+                <label>
+                    <input type="checkbox" id="beginnerMode"> 初心者モード（音名読み上げ）
+                </label>
+            </div>
         </div>
         
         <div class="game-area">
@@ -503,6 +509,8 @@
                 this.autoNextTimeout = null;
                 this.octaveIgnoreMode = false;
                 this.darkMode = false;
+                this.beginnerMode = false;
+                this.speechSynthesis = window.speechSynthesis;
                 
                 // 音名マッピング（日本式）
                 this.noteNames = {
@@ -775,6 +783,9 @@
                     this.createPiano();
                 }
                 
+                // 初心者モードの設定を取得
+                this.beginnerMode = document.getElementById('beginnerMode').checked;
+                
                 this.clearKeyHighlights();
                 document.getElementById('result').textContent = '';
                 document.getElementById('playAgain').disabled = false;
@@ -813,6 +824,11 @@
                         this.playChord(this.currentQuestion.notes);
                         break;
                 }
+                
+                // 初心者モードの場合は音名を読み上げ
+                if (this.beginnerMode) {
+                    this.speakNotes(this.currentQuestion.notes);
+                }
             }
             
             updateQuestionDisplay() {
@@ -838,6 +854,10 @@
                 
                 if (this.octaveIgnoreMode) {
                     baseText += ' 🎵 オクターブ無視モード！';
+                }
+                
+                if (this.beginnerMode) {
+                    baseText += ' 🔊 初心者モード（音名読み上げ）！';
                 }
                 
                 questionEl.textContent = baseText;
@@ -1105,6 +1125,44 @@
                 }
             }
             
+            speakNotes(notes) {
+                if (!this.beginnerMode || !this.speechSynthesis) return;
+                
+                // 既存の音声を停止
+                this.speechSynthesis.cancel();
+                
+                const noteNames = notes.map(note => {
+                    const noteName = note.slice(0, -1);
+                    const octave = note.slice(-1);
+                    if (this.octaveIgnoreMode) {
+                        return this.noteNames[noteName];
+                    } else {
+                        return this.noteNames[noteName] + octave + 'の音';
+                    }
+                });
+                
+                let speechText = '';
+                if (this.currentQuestion.type === 'single') {
+                    speechText = `${noteNames[0]}です`;
+                } else if (this.currentQuestion.type === 'sequence') {
+                    speechText = `${noteNames.join('、')}の順番です`;
+                } else if (this.currentQuestion.type === 'chord') {
+                    speechText = `${noteNames.join('と')}の和音です`;
+                }
+                
+                const utterance = new SpeechSynthesisUtterance(speechText);
+                utterance.lang = 'ja-JP';
+                utterance.rate = 0.8;
+                utterance.pitch = 1.0;
+                utterance.volume = 0.8;
+                
+                // 音声読み上げを少し遅延させて、音の再生後に実行
+                setTimeout(() => {
+                    this.speechSynthesis.speak(utterance);
+                }, this.currentQuestion.type === 'sequence' ? 
+                    (this.currentQuestion.notes.length * 800 + 500) : 1500);
+            }
+            
             updateDifficultySettings() {
                 const difficulty = document.getElementById('difficulty').value;
                 const sequenceSettings = document.getElementById('sequenceSettings');
@@ -1141,6 +1199,14 @@
                 
                 document.getElementById('darkMode').addEventListener('change', (e) => {
                     this.toggleDarkMode(e.target.checked);
+                });
+                
+                document.getElementById('beginnerMode').addEventListener('change', (e) => {
+                    // Web Speech APIの対応チェック
+                    if (e.target.checked && !window.speechSynthesis) {
+                        alert('お使いのブラウザは音声合成機能に対応していません。');
+                        e.target.checked = false;
+                    }
                 });
                 
                 document.getElementById('newGame').addEventListener('click', () => {
