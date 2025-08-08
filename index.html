@@ -1162,18 +1162,8 @@
                 const utterance = new SpeechSynthesisUtterance(speechText);
                 utterance.lang = 'ja-JP';
                 utterance.rate = 0.8;
-                utterance.pitch = 0.5; // 男性の声に設定
+                utterance.pitch = 1.0;
                 utterance.volume = 0.8;
-                
-                // 利用可能な音声から男性の声を選択
-                const voices = this.speechSynthesis.getVoices();
-                const maleVoice = voices.find(voice => 
-                    voice.lang.includes('ja') && 
-                    (voice.name.includes('Male') || voice.name.includes('男性') || voice.name.includes('Ichiro'))
-                );
-                if (maleVoice) {
-                    utterance.voice = maleVoice;
-                }
                 
                 // 音声読み上げを先に開始
                 this.speechSynthesis.speak(utterance);
