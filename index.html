@@ -165,6 +165,62 @@
         .wrong-answer {
             color: #e74c3c;
         }
+        
+        .timer {
+            font-size: 36px;
+            font-weight: bold;
+            color: #e74c3c;
+            margin: 15px 0;
+            text-align: center;
+        }
+        
+        .timer.warning {
+            animation: pulse 0.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        .explosion {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, #ff4444 0%, #ff0000 30%, #000000 100%);
+            z-index: 1000;
+            display: none;
+            animation: explode 2s ease-out;
+        }
+        
+        @keyframes explode {
+            0% { 
+                opacity: 0;
+                transform: scale(0);
+            }
+            50% { 
+                opacity: 1;
+                transform: scale(1.5);
+            }
+            100% { 
+                opacity: 0;
+                transform: scale(3);
+            }
+        }
+        
+        .explosion-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 72px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.8);
+        }
     </style>
 </head>
 <body>
@@ -210,6 +266,22 @@
                 <label>和音数:</label>
                 <input type="number" id="chordCount" min="2" max="6" value="3">
             </div>
+            
+            <div class="setting-group">
+                <label>
+                    <input type="checkbox" id="timeBombMode"> 時限爆弾モード
+                </label>
+                <span id="timeBombSettings" style="display: none;">
+                    制限時間: 
+                    <select id="timeLimit">
+                        <option value="5">5秒</option>
+                        <option value="10" selected>10秒</option>
+                        <option value="15">15秒</option>
+                        <option value="20">20秒</option>
+                        <option value="30">30秒</option>
+                    </select>
+                </span>
+            </div>
         </div>
         
         <div class="game-area">
@@ -220,6 +292,8 @@
             <div class="question" id="question">
                 「新しいゲーム」を押して開始してください
             </div>
+            
+            <div class="timer" id="timer" style="display: none;"></div>
             
             <div class="piano" id="piano">
                 <!-- ピアノ鍵盤はJavaScriptで生成 -->
@@ -235,6 +309,10 @@
             <div class="result" id="result"></div>
         </div>
     </div>
+    
+    <div class="explosion" id="explosion">
+        <div class="explosion-text">💥 時間切れ！ 💥</div>
+    </div>
 
     <script>
         class PianoGame {
@@ -245,6 +323,10 @@
                 this.wrongCount = 0;
                 this.gameActive = false;
                 this.answered = false;
+                this.timeBombMode = false;
+                this.timeLimit = 10;
+                this.timeRemaining = 0;
+                this.timerInterval = null;
                 
                 // 音名マッピング（日本式）
                 this.noteNames = {
@@ -426,14 +508,26 @@
                 this.gameActive = true;
                 this.answered = false;
                 
+                // 時限爆弾モードの設定を取得
+                this.timeBombMode = document.getElementById('timeBombMode').checked;
+                this.timeLimit = parseInt(document.getElementById('timeLimit').value);
+                
                 this.clearKeyHighlights();
                 document.getElementById('result').textContent = '';
                 document.getElementById('playAgain').disabled = false;
                 document.getElementById('checkAnswer').disabled = true;
                 document.getElementById('nextQuestion').disabled = true;
                 
+                // タイマーをリセット
+                this.stopTimer();
+                
                 this.playCurrentQuestion();
                 this.updateQuestionDisplay();
+                
+                // 時限爆弾モードの場合はタイマーを開始
+                if (this.timeBombMode) {
+                    this.startTimer();
+                }
             }
             
             playCurrentQuestion() {
@@ -456,17 +550,83 @@
                 const questionEl = document.getElementById('question');
                 const difficulty = document.getElementById('difficulty').value;
                 
+                let baseText = '';
                 switch (difficulty) {
                     case 'single':
-                        questionEl.textContent = '単音を聞いて、該当する鍵盤をクリックし、スペースキーで答え合わせしてください';
+                        baseText = '単音を聞いて、該当する鍵盤をクリックし、スペースキーで答え合わせしてください';
                         break;
                     case 'sequence':
-                        questionEl.textContent = '連音を聞いて、順番に鍵盤をクリックし、スペースキーで答え合わせしてください';
+                        baseText = '連音を聞いて、順番に鍵盤をクリックし、スペースキーで答え合わせしてください';
                         break;
                     case 'chord':
-                        questionEl.textContent = '和音を聞いて、該当する鍵盤をすべてクリックし、スペースキーで答え合わせしてください';
+                        baseText = '和音を聞いて、該当する鍵盤をすべてクリックし、スペースキーで答え合わせしてください';
                         break;
                 }
+                
+                if (this.timeBombMode) {
+                    baseText += ' ⏰ 時限爆弾モード！';
+                }
+                
+                questionEl.textContent = baseText;
+            }
+            
+            startTimer() {
+                this.timeRemaining = this.timeLimit;
+                const timerEl = document.getElementById('timer');
+                timerEl.style.display = 'block';
+                timerEl.classList.remove('warning');
+                
+                this.updateTimerDisplay();
+                
+                this.timerInterval = setInterval(() => {
+                    this.timeRemaining--;
+                    this.updateTimerDisplay();
+                    
+                    if (this.timeRemaining <= 3) {
+                        timerEl.classList.add('warning');
+                    }
+                    
+                    if (this.timeRemaining <= 0) {
+                        this.timeUp();
+                    }
+                }, 1000);
+            }
+            
+            stopTimer() {
+                if (this.timerInterval) {
+                    clearInterval(this.timerInterval);
+                    this.timerInterval = null;
+                }
+                document.getElementById('timer').style.display = 'none';
+            }
+            
+            updateTimerDisplay() {
+                const timerEl = document.getElementById('timer');
+                timerEl.textContent = `⏰ ${this.timeRemaining}秒`;
+            }
+            
+            timeUp() {
+                this.stopTimer();
+                this.showExplosion();
+                this.gameActive = false;
+                this.answered = true;
+                this.wrongCount++;
+                this.updateScore();
+                
+                setTimeout(() => {
+                    this.showResult(false, this.currentQuestion.notes, []);
+                    document.getElementById('checkAnswer').disabled = true;
+                    document.getElementById('nextQuestion').disabled = false;
+                }, 2000);
+            }
+            
+            showExplosion() {
+                const explosionEl = document.getElementById('explosion');
+                explosionEl.style.display = 'block';
+                
+                setTimeout(() => {
+                    explosionEl.style.display = 'none';
+                }, 2000);
             }
             
             handleKeyClick(note) {
@@ -501,6 +661,11 @@
             
             checkAnswer() {
                 if (!this.gameActive || this.answered) return;
+                
+                // タイマーを停止
+                if (this.timeBombMode) {
+                    this.stopTimer();
+                }
                 
                 const selectedKeys = document.querySelectorAll('.selected');
                 const selectedNotes = Array.from(selectedKeys).map(key => key.dataset.note);
@@ -592,6 +757,11 @@
             bindEvents() {
                 document.getElementById('difficulty').addEventListener('change', () => {
                     this.updateDifficultySettings();
+                });
+                
+                document.getElementById('timeBombMode').addEventListener('change', (e) => {
+                    const timeBombSettings = document.getElementById('timeBombSettings');
+                    timeBombSettings.style.display = e.target.checked ? 'inline' : 'none';
                 });
                 
                 document.getElementById('newGame').addEventListener('click', () => {
