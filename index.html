@@ -387,10 +387,11 @@
                 let whiteKeyIndex = 0;
                 
                 // オクターブ無視モードの場合は1オクターブのみ表示
-                const startOctave = this.octaveIgnoreMode ? 4 : 2;
-                const endOctave = this.octaveIgnoreMode ? 4 : 7;
-                const keyWidth = this.octaveIgnoreMode ? 63 : 42;
-                const blackKeyOffset = this.octaveIgnoreMode ? 42 : 28;
+                const octaveIgnoreMode = document.getElementById('octaveIgnoreMode').checked;
+                const startOctave = octaveIgnoreMode ? 4 : 2;
+                const endOctave = octaveIgnoreMode ? 4 : 7;
+                const keyWidth = octaveIgnoreMode ? 63 : 42;
+                const blackKeyOffset = octaveIgnoreMode ? 42 : 28;
                 
                 for (let octave = startOctave; octave <= endOctave; octave++) {
                     for (let i = 0; i < whiteKeys.length; i++) {
@@ -404,7 +405,7 @@
                         
                         const label = document.createElement('div');
                         label.className = 'key-label';
-                        label.textContent = this.octaveIgnoreMode ? this.noteNames[note] : this.noteNames[note] + octave;
+                        label.textContent = octaveIgnoreMode ? this.noteNames[note] : this.noteNames[note] + octave;
                         key.appendChild(label);
                         
                         key.addEventListener('click', () => this.handleKeyClick(note + octave));
@@ -422,7 +423,7 @@
                             
                             const blackLabel = document.createElement('div');
                             blackLabel.className = 'key-label';
-                            blackLabel.textContent = this.octaveIgnoreMode ? this.noteNames[blackNote] : this.noteNames[blackNote] + octave;
+                            blackLabel.textContent = octaveIgnoreMode ? this.noteNames[blackNote] : this.noteNames[blackNote] + octave;
                             blackKey.appendChild(blackLabel);
                             
                             blackKey.addEventListener('click', () => this.handleKeyClick(blackNote + octave));
