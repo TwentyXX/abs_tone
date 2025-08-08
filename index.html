@@ -277,6 +277,17 @@
                     秒
                 </span>
             </div>
+            
+            <div class="setting-group">
+                <label>
+                    <input type="checkbox" id="autoNext"> 自動で次の問題へ
+                </label>
+                <span id="autoNextSettings" style="display: none;">
+                    待機時間: 
+                    <input type="number" id="autoNextDelay" min="1" max="10" value="3" step="0.5">
+                    秒
+                </span>
+            </div>
         </div>
         
         <div class="game-area">
@@ -322,6 +333,9 @@
                 this.timeLimit = 10;
                 this.timeRemaining = 0;
                 this.timerInterval = null;
+                this.autoNext = false;
+                this.autoNextDelay = 3;
+                this.autoNextTimeout = null;
                 
                 // 音名マッピング（日本式）
                 this.noteNames = {
@@ -505,7 +519,11 @@
                 
                 // 時限爆弾モードの設定を取得
                 this.timeBombMode = document.getElementById('timeBombMode').checked;
-                this.timeLimit = parseInt(document.getElementById('timeLimit').value);
+                this.timeLimit = parseFloat(document.getElementById('timeLimit').value);
+                
+                // 自動進行の設定を取得
+                this.autoNext = document.getElementById('autoNext').checked;
+                this.autoNextDelay = parseFloat(document.getElementById('autoNextDelay').value);
                 
                 this.clearKeyHighlights();
                 document.getElementById('result').textContent = '';
@@ -515,6 +533,12 @@
                 
                 // タイマーをリセット
                 this.stopTimer();
+                
+                // 自動進行のタイムアウトをクリア
+                if (this.autoNextTimeout) {
+                    clearTimeout(this.autoNextTimeout);
+                    this.autoNextTimeout = null;
+                }
                 
                 this.playCurrentQuestion();
                 this.updateQuestionDisplay();
@@ -633,8 +657,16 @@
                 // すべての難易度で選択をトグルする
                 this.toggleKeySelection(note);
                 
-                // 選択状態に応じて答え合わせボタンを有効化
-                this.updateCheckAnswerButton();
+                // 時限爆弾モードでは即座に答え合わせ
+                if (this.timeBombMode) {
+                    // 少し遅延を入れて音が聞こえるようにする
+                    setTimeout(() => {
+                        this.checkAnswer();
+                    }, 200);
+                } else {
+                    // 選択状態に応じて答え合わせボタンを有効化
+                    this.updateCheckAnswerButton();
+                }
             }
             
             updateCheckAnswerButton() {
@@ -720,10 +752,34 @@
                     return this.noteNames[noteName] + octave;
                 }).join(', ');
                 
+                let resultText = '';
                 if (isCorrect) {
-                    resultEl.innerHTML = `<span class="correct-answer">正解！ ${correctNoteNames}</span>`;
+                    resultText = `<span class="correct-answer">正解！ ${correctNoteNames}</span>`;
                 } else {
-                    resultEl.innerHTML = `<span class="wrong-answer">不正解。正解は ${correctNoteNames} でした。</span>`;
+                    resultText = `<span class="wrong-answer">不正解。正解は ${correctNoteNames} でした。</span>`;
+                }
+                
+                // 自動進行の場合はカウントダウンを表示
+                if (this.autoNext) {
+                    let countdown = this.autoNextDelay;
+                    resultText += `<br><small>次の問題まで ${countdown.toFixed(1)} 秒</small>`;
+                    resultEl.innerHTML = resultText;
+                    
+                    const countdownInterval = setInterval(() => {
+                        countdown -= 0.1;
+                        if (countdown > 0) {
+                            const updatedText = resultText.replace(/\d+\.?\d* 秒/, `${countdown.toFixed(1)} 秒`);
+                            resultEl.innerHTML = updatedText;
+                        } else {
+                            clearInterval(countdownInterval);
+                        }
+                    }, 100);
+                    
+                    this.autoNextTimeout = setTimeout(() => {
+                        this.startNewGame();
+                    }, this.autoNextDelay * 1000);
+                } else {
+                    resultEl.innerHTML = resultText;
                 }
             }
             
@@ -757,6 +813,11 @@
                 document.getElementById('timeBombMode').addEventListener('change', (e) => {
                     const timeBombSettings = document.getElementById('timeBombSettings');
                     timeBombSettings.style.display = e.target.checked ? 'inline' : 'none';
+                });
+                
+                document.getElementById('autoNext').addEventListener('change', (e) => {
+                    const autoNextSettings = document.getElementById('autoNextSettings');
+                    autoNextSettings.style.display = e.target.checked ? 'inline' : 'none';
                 });
                 
                 document.getElementById('newGame').addEventListener('click', () => {
