@@ -381,31 +381,89 @@
                 const piano = document.getElementById('piano');
                 piano.innerHTML = '';
                 
+                const octaveIgnoreMode = document.getElementById('octaveIgnoreMode').checked;
+                
+                if (octaveIgnoreMode) {
+                    // オクターブ無視モードでは1オクターブ分（12キー）のみ表示
+                    this.createOctaveIgnorePiano();
+                } else {
+                    // 通常モードでは全オクターブ表示
+                    this.createNormalPiano();
+                }
+            }
+            
+            createOctaveIgnorePiano() {
+                const piano = document.getElementById('piano');
                 const whiteKeys = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
                 const blackKeys = ['C#', 'D#', null, 'F#', 'G#', 'A#', null];
+                const octave = 4; // 固定オクターブ
+                const keyWidth = 63;
+                const blackKeyOffset = 42;
                 
                 let whiteKeyIndex = 0;
                 
-                // オクターブ無視モードの場合は1オクターブのみ表示
-                const octaveIgnoreMode = document.getElementById('octaveIgnoreMode').checked;
-                const startOctave = octaveIgnoreMode ? 4 : 2;
-                const endOctave = octaveIgnoreMode ? 4 : 7;
-                const keyWidth = octaveIgnoreMode ? 63 : 42;
-                const blackKeyOffset = octaveIgnoreMode ? 42 : 28;
+                for (let i = 0; i < whiteKeys.length; i++) {
+                    const note = whiteKeys[i];
+                    const key = document.createElement('div');
+                    key.className = 'white-key';
+                    key.dataset.note = note + octave;
+                    key.dataset.baseNote = note;
+                    key.dataset.frequency = this.noteToFrequency(note + octave);
+                    key.style.left = (whiteKeyIndex * keyWidth) + 'px';
+                    
+                    const label = document.createElement('div');
+                    label.className = 'key-label';
+                    label.textContent = this.noteNames[note];
+                    key.appendChild(label);
+                    
+                    key.addEventListener('click', () => this.handleKeyClick(note + octave));
+                    piano.appendChild(key);
+                    
+                    // 黒鍵を追加
+                    if (blackKeys[i]) {
+                        const blackNote = blackKeys[i];
+                        const blackKey = document.createElement('div');
+                        blackKey.className = 'black-key';
+                        blackKey.dataset.note = blackNote + octave;
+                        blackKey.dataset.baseNote = blackNote;
+                        blackKey.dataset.frequency = this.noteToFrequency(blackNote + octave);
+                        blackKey.style.left = (whiteKeyIndex * keyWidth + blackKeyOffset) + 'px';
+                        
+                        const blackLabel = document.createElement('div');
+                        blackLabel.className = 'key-label';
+                        blackLabel.textContent = this.noteNames[blackNote];
+                        blackKey.appendChild(blackLabel);
+                        
+                        blackKey.addEventListener('click', () => this.handleKeyClick(blackNote + octave));
+                        piano.appendChild(blackKey);
+                    }
+                    
+                    whiteKeyIndex++;
+                }
+            }
+            
+            createNormalPiano() {
+                const piano = document.getElementById('piano');
+                const whiteKeys = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+                const blackKeys = ['C#', 'D#', null, 'F#', 'G#', 'A#', null];
+                const keyWidth = 42;
+                const blackKeyOffset = 28;
                 
-                for (let octave = startOctave; octave <= endOctave; octave++) {
+                let whiteKeyIndex = 0;
+                
+                for (let octave = 2; octave <= 7; octave++) {
                     for (let i = 0; i < whiteKeys.length; i++) {
                         const note = whiteKeys[i];
                         const key = document.createElement('div');
                         key.className = 'white-key';
                         key.dataset.note = note + octave;
-                        key.dataset.baseNote = note; // オクターブ無視用
+                        key.dataset.baseNote = note;
                         key.dataset.frequency = this.noteToFrequency(note + octave);
                         key.style.left = (whiteKeyIndex * keyWidth) + 'px';
                         
                         const label = document.createElement('div');
                         label.className = 'key-label';
-                        label.textContent = octaveIgnoreMode ? this.noteNames[note] : this.noteNames[note] + octave;
+                        label.textContent = this.noteNames[note] + octave;
                         key.appendChild(label);
                         
                         key.addEventListener('click', () => this.handleKeyClick(note + octave));
@@ -417,13 +475,13 @@
                             const blackKey = document.createElement('div');
                             blackKey.className = 'black-key';
                             blackKey.dataset.note = blackNote + octave;
-                            blackKey.dataset.baseNote = blackNote; // オクターブ無視用
+                            blackKey.dataset.baseNote = blackNote;
                             blackKey.dataset.frequency = this.noteToFrequency(blackNote + octave);
                             blackKey.style.left = (whiteKeyIndex * keyWidth + blackKeyOffset) + 'px';
                             
                             const blackLabel = document.createElement('div');
                             blackLabel.className = 'key-label';
-                            blackLabel.textContent = octaveIgnoreMode ? this.noteNames[blackNote] : this.noteNames[blackNote] + octave;
+                            blackLabel.textContent = this.noteNames[blackNote] + octave;
                             blackKey.appendChild(blackLabel);
                             
                             blackKey.addEventListener('click', () => this.handleKeyClick(blackNote + octave));
@@ -880,6 +938,16 @@
                 document.getElementById('autoNext').addEventListener('change', (e) => {
                     const autoNextSettings = document.getElementById('autoNextSettings');
                     autoNextSettings.style.display = e.target.checked ? 'inline' : 'none';
+                });
+                
+                document.getElementById('octaveIgnoreMode').addEventListener('change', (e) => {
+                    const piano = document.getElementById('piano');
+                    if (e.target.checked) {
+                        piano.classList.add('octave-ignore');
+                    } else {
+                        piano.classList.remove('octave-ignore');
+                    }
+                    this.createPiano();
                 });
                 
                 document.getElementById('newGame').addEventListener('click', () => {
