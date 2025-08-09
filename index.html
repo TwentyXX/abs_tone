@@ -624,10 +624,9 @@
                             envelope: { attack: 0.08, decay: 0.2, sustain: 0.6, release: 0.8 }
                         }).toDestination(),
                         
-                        'guitar': new Tone.PluckSynth({
-                            attackNoise: 1,
-                            dampening: 4000,
-                            resonance: 0.7
+                        'guitar': new Tone.Synth({
+                            oscillator: { type: 'triangle' },
+                            envelope: { attack: 0.01, decay: 0.6, sustain: 0.15, release: 2.0 }
                         }).toDestination(),
                         
                         'violin': new Tone.Synth({
