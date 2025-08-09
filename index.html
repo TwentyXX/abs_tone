@@ -615,104 +615,207 @@
             
             async initializeAudio() {
                 try {
-                    // 各楽器のシンセサイザーを初期化（Tone.startは後で呼ぶ）
-                    this.instruments = {
-                        'piano': new Tone.Synth({
-                            oscillator: { type: 'sine' },
-                            envelope: { attack: 0.02, decay: 0.4, sustain: 0.2, release: 1.2 }
-                        }).toDestination(),
-                        
-                        'organ': new Tone.Synth({
-                            oscillator: { type: 'square' },
-                            envelope: { attack: 0.08, decay: 0.2, sustain: 0.6, release: 0.8 }
-                        }).toDestination(),
-                        
-                        'guitar': new Tone.Synth({
-                            oscillator: { type: 'triangle' },
-                            envelope: { attack: 0.01, decay: 0.6, sustain: 0.15, release: 2.0 }
-                        }).toDestination(),
-                        
-                        'violin': new Tone.Synth({
-                            oscillator: { type: 'sawtooth' },
-                            envelope: { attack: 0.25, decay: 0.2, sustain: 0.8, release: 1.5 }
-                        }).toDestination(),
-                        
-                        'trumpet': new Tone.Synth({
-                            oscillator: { type: 'square' },
-                            envelope: { attack: 0.12, decay: 0.3, sustain: 0.7, release: 0.9 }
-                        }).toDestination(),
-                        
-                        'flute': new Tone.Synth({
-                            oscillator: { type: 'sine' },
-                            envelope: { attack: 0.15, decay: 0.3, sustain: 0.6, release: 1.0 }
-                        }).toDestination(),
-                        
-                        'bell': new Tone.MetalSynth({
-                            frequency: 200,
-                            envelope: { attack: 0.001, decay: 1.4, release: 0.2 },
-                            harmonicity: 5.1,
-                            modulationIndex: 32,
-                            resonance: 4000,
-                            octaves: 1.5
-                        }).toDestination(),
-                        
-                        'synth': new Tone.FMSynth({
-                            harmonicity: 3,
-                            modulationIndex: 10,
-                            detune: 0,
-                            oscillator: { type: 'sine' },
-                            envelope: { attack: 0.08, decay: 0.4, sustain: 0.3, release: 1.2 },
-                            modulation: { type: 'square' },
-                            modulationEnvelope: { attack: 0.5, decay: 0, sustain: 1, release: 0.5 }
-                        }).toDestination(),
-                        
-                        'voice': new Tone.AMSynth({
-                            harmonicity: 2,
-                            detune: 0,
-                            oscillator: { type: 'sine' },
-                            envelope: { attack: 0.1, decay: 0.2, sustain: 0.8, release: 1.0 },
-                            modulation: { type: 'triangle' },
-                            modulationEnvelope: { attack: 0.2, decay: 0.1, sustain: 0.9, release: 0.8 }
-                        }).toDestination(),
-                        
-                        'choir': new Tone.FMSynth({
-                            harmonicity: 1.5,
-                            modulationIndex: 8,
-                            detune: 0,
-                            oscillator: { type: 'sawtooth' },
-                            envelope: { attack: 0.3, decay: 0.2, sustain: 0.7, release: 2.0 },
-                            modulation: { type: 'sine' },
-                            modulationEnvelope: { attack: 0.4, decay: 0.1, sustain: 0.8, release: 1.5 }
-                        }).toDestination(),
-                        
-                        'whistle': new Tone.Synth({
-                            oscillator: { 
-                                type: 'custom',
-                                partials: [1, 0.5, 0.3, 0.1]
-                            },
-                            envelope: { attack: 0.05, decay: 0.1, sustain: 0.9, release: 0.4 }
-                        }).toDestination()
-                    };
+                    // Web Audio APIを直接使用してリアルな楽器音を作成
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    this.instruments = {};
                     
-                    // 聴覚特性に基づいた音量調整（大げさに調整）
-                    // 高音域が多い楽器は大幅に音量を下げ、低音域が豊富な楽器は大幅に上げる
-                    this.instruments.piano.volume.value = -5;   // バランスの良い楽器なので上げる
-                    this.instruments.organ.volume.value = -3;   // 低音域が豊富なので大幅に上げる
-                    this.instruments.guitar.volume.value = -6;  // 中音域中心なので少し上げる
-                    this.instruments.violin.volume.value = -25; // 高音域が刺激的なので極端に下げる
-                    this.instruments.trumpet.volume.value = -28; // 高音域が非常に刺激的なので最も下げる
-                    this.instruments.flute.volume.value = -22;  // 高音域が多いので大幅に下げる
-                    this.instruments.bell.volume.value = -30;   // 高周波成分が多いので極端に下げる
-                    this.instruments.synth.volume.value = -18;  // シンセの音量を大幅に下げる
-                    this.instruments.voice.volume.value = -8;   // 人声は聞き取りやすいので標準的
-                    this.instruments.choir.volume.value = -10;  // 合唱は少し下げる
-                    this.instruments.whistle.volume.value = -20; // 口笛は高音域なので下げる
+                    // 各楽器の音色定義
+                    this.instrumentConfigs = {
+                        'piano': {
+                            harmonics: [1.0, 0.5, 0.3, 0.2, 0.1, 0.05, 0.03],
+                            attack: 0.01,
+                            decay: 0.3,
+                            sustain: 0.2,
+                            release: 1.2,
+                            filterFreq: 2000,
+                            filterQ: 1
+                        },
+                        'organ': {
+                            harmonics: [1.0, 0.8, 0.6, 0.4, 0.3, 0.2, 0.1],
+                            attack: 0.05,
+                            decay: 0.1,
+                            sustain: 0.8,
+                            release: 0.5,
+                            filterFreq: 1500,
+                            filterQ: 2
+                        },
+                        'guitar': {
+                            harmonics: [1.0, 0.7, 0.4, 0.2, 0.1, 0.05],
+                            attack: 0.005,
+                            decay: 0.8,
+                            sustain: 0.1,
+                            release: 2.0,
+                            filterFreq: 3000,
+                            filterQ: 0.5
+                        },
+                        'violin': {
+                            harmonics: [0.8, 1.0, 0.6, 0.4, 0.3, 0.2, 0.15, 0.1],
+                            attack: 0.2,
+                            decay: 0.1,
+                            sustain: 0.9,
+                            release: 1.0,
+                            filterFreq: 4000,
+                            filterQ: 3
+                        },
+                        'trumpet': {
+                            harmonics: [1.0, 0.9, 0.7, 0.5, 0.3, 0.2, 0.1],
+                            attack: 0.08,
+                            decay: 0.2,
+                            sustain: 0.8,
+                            release: 0.6,
+                            filterFreq: 2500,
+                            filterQ: 2
+                        },
+                        'flute': {
+                            harmonics: [1.0, 0.3, 0.1, 0.05, 0.02],
+                            attack: 0.1,
+                            decay: 0.2,
+                            sustain: 0.7,
+                            release: 0.8,
+                            filterFreq: 3500,
+                            filterQ: 1
+                        },
+                        'bell': {
+                            harmonics: [1.0, 0.6, 0.4, 0.8, 0.3, 0.2, 0.5, 0.1],
+                            attack: 0.001,
+                            decay: 2.0,
+                            sustain: 0.1,
+                            release: 3.0,
+                            filterFreq: 5000,
+                            filterQ: 0.5
+                        },
+                        'synth': {
+                            harmonics: [1.0, 0.8, 0.6, 0.4, 0.2, 0.1],
+                            attack: 0.05,
+                            decay: 0.3,
+                            sustain: 0.5,
+                            release: 1.0,
+                            filterFreq: 2000,
+                            filterQ: 1.5
+                        },
+                        'voice': {
+                            harmonics: [1.0, 0.7, 0.5, 0.3, 0.2, 0.1, 0.05],
+                            attack: 0.1,
+                            decay: 0.2,
+                            sustain: 0.8,
+                            release: 1.0,
+                            filterFreq: 1200,
+                            filterQ: 4,
+                            formants: [800, 1200, 2600] // 人声のフォルマント
+                        },
+                        'choir': {
+                            harmonics: [1.0, 0.8, 0.6, 0.4, 0.3, 0.2, 0.1, 0.05],
+                            attack: 0.3,
+                            decay: 0.2,
+                            sustain: 0.7,
+                            release: 2.0,
+                            filterFreq: 1500,
+                            filterQ: 3,
+                            formants: [600, 1000, 2400]
+                        },
+                        'whistle': {
+                            harmonics: [1.0, 0.2, 0.1, 0.05],
+                            attack: 0.05,
+                            decay: 0.1,
+                            sustain: 0.9,
+                            release: 0.3,
+                            filterFreq: 4000,
+                            filterQ: 5
+                        }
+                    };
                     
                 } catch (error) {
                     console.error('Audio initialization failed:', error);
                     // フォールバック用のWeb Audio API
                     this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 }
+            }
+            
+            createInstrumentSound(frequency, duration, instrumentName) {
+                if (!this.audioContext || !this.instrumentConfigs[instrumentName]) return;
+                
+                const config = this.instrumentConfigs[instrumentName];
+                const now = this.audioContext.currentTime;
+                
+                // 複数のオシレーターで倍音を作成
+                const oscillators = [];
+                const gainNodes = [];
+                
+                // メインフィルター
+                const filter = this.audioContext.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(config.filterFreq, now);
+                filter.Q.setValueAtTime(config.filterQ, now);
+                filter.connect(this.audioContext.destination);
+                
+                // フォルマントフィルター（人声系楽器用）
+                let formantFilters = [];
+                if (config.formants) {
+                    config.formants.forEach(formantFreq => {
+                        const formantFilter = this.audioContext.createBiquadFilter();
+                        formantFilter.type = 'bandpass';
+                        formantFilter.frequency.setValueAtTime(formantFreq, now);
+                        formantFilter.Q.setValueAtTime(10, now);
+                        formantFilter.connect(filter);
+                        formantFilters.push(formantFilter);
+                    });
+                }
+                
+                // 各倍音のオシレーターを作成
+                config.harmonics.forEach((amplitude, index) => {
+                    if (amplitude > 0.01) { // 小さすぎる倍音は無視
+                        const oscillator = this.audioContext.createOscillator();
+                        const gainNode = this.audioContext.createGain();
+                        
+                        oscillator.frequency.setValueAtTime(frequency * (index + 1), now);
+                        oscillator.type = 'sine';
+                        
+                        // 聴覚特性補正を適用
+                        const correctionFactor = this.calculateLoudnessCorrection(frequency * (index + 1));
+                        const adjustedAmplitude = amplitude * correctionFactor * this.getInstrumentVolumeMultiplier(instrumentName);
+                        
+                        // ADSRエンベロープ
+                        gainNode.gain.setValueAtTime(0, now);
+                        gainNode.gain.linearRampToValueAtTime(adjustedAmplitude, now + config.attack);
+                        gainNode.gain.exponentialRampToValueAtTime(adjustedAmplitude * config.sustain, now + config.attack + config.decay);
+                        gainNode.gain.setValueAtTime(adjustedAmplitude * config.sustain, now + duration - config.release);
+                        gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
+                        
+                        oscillator.connect(gainNode);
+                        
+                        // フォルマントフィルターがある場合はそれを通す
+                        if (formantFilters.length > 0) {
+                            const formantIndex = index % formantFilters.length;
+                            gainNode.connect(formantFilters[formantIndex]);
+                        } else {
+                            gainNode.connect(filter);
+                        }
+                        
+                        oscillator.start(now);
+                        oscillator.stop(now + duration);
+                        
+                        oscillators.push(oscillator);
+                        gainNodes.push(gainNode);
+                    }
+                });
+            }
+            
+            getInstrumentVolumeMultiplier(instrumentName) {
+                // 聴覚特性に基づいた楽器別音量調整
+                const volumeMap = {
+                    'piano': 0.4,
+                    'organ': 0.6,
+                    'guitar': 0.35,
+                    'violin': 0.08,
+                    'trumpet': 0.05,
+                    'flute': 0.12,
+                    'bell': 0.03,
+                    'synth': 0.1,
+                    'voice': 0.3,
+                    'choir': 0.2,
+                    'whistle': 0.06
+                };
+                return volumeMap[instrumentName] || 0.3;
             }
             
             createPiano() {
@@ -854,19 +957,6 @@
             
             async playNote(frequency, duration = 1.0, useCurrentInstrument = false) {
                 try {
-                    // Tone.jsが利用可能で楽器が指定されている場合
-                    if (useCurrentInstrument && this.instruments && this.instruments[this.currentInstrument]) {
-                        // Tone.jsが開始されていることを確認
-                        if (Tone.context.state !== 'running') {
-                            await Tone.start();
-                        }
-                        
-                        const note = this.frequencyToNote(frequency);
-                        this.instruments[this.currentInstrument].triggerAttackRelease(note, duration);
-                        return;
-                    }
-                    
-                    // フォールバック: Web Audio API
                     if (!this.audioContext) {
                         this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
                     }
@@ -876,24 +966,30 @@
                         await this.audioContext.resume();
                     }
                     
-                    const oscillator = this.audioContext.createOscillator();
-                    const gainNode = this.audioContext.createGain();
-                    
-                    oscillator.connect(gainNode);
-                    gainNode.connect(this.audioContext.destination);
-                    
-                    oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
-                    oscillator.type = 'sine';
-                    
-                    // 聴覚特性に合わせた音量補正を適用
-                    const correctionFactor = this.calculateLoudnessCorrection(frequency);
-                    const adjustedVolume = 0.3 * correctionFactor;
-                    
-                    gainNode.gain.setValueAtTime(adjustedVolume, this.audioContext.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
-                    
-                    oscillator.start(this.audioContext.currentTime);
-                    oscillator.stop(this.audioContext.currentTime + duration);
+                    if (useCurrentInstrument && this.instrumentConfigs[this.currentInstrument]) {
+                        // カスタム楽器音を使用
+                        this.createInstrumentSound(frequency, duration, this.currentInstrument);
+                    } else {
+                        // フォールバック: シンプルなピアノ音
+                        const oscillator = this.audioContext.createOscillator();
+                        const gainNode = this.audioContext.createGain();
+                        
+                        oscillator.connect(gainNode);
+                        gainNode.connect(this.audioContext.destination);
+                        
+                        oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
+                        oscillator.type = 'sine';
+                        
+                        // 聴覚特性に合わせた音量補正を適用
+                        const correctionFactor = this.calculateLoudnessCorrection(frequency);
+                        const adjustedVolume = 0.3 * correctionFactor;
+                        
+                        gainNode.gain.setValueAtTime(adjustedVolume, this.audioContext.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
+                        
+                        oscillator.start(this.audioContext.currentTime);
+                        oscillator.stop(this.audioContext.currentTime + duration);
+                    }
                     
                 } catch (error) {
                     console.error('Note playback failed:', error);
@@ -1021,18 +1117,18 @@
             }
             
             async startNewGame() {
-                // Tone.jsを初期化（ユーザーインタラクション後に実行）
-                if (!this.instruments || Object.keys(this.instruments).length === 0) {
+                // Web Audio APIを初期化
+                if (!this.audioContext) {
                     await this.initializeAudio();
                 }
                 
-                // Tone.jsを開始（ユーザーインタラクション後に実行）
+                // AudioContextを開始
                 try {
-                    if (Tone.context.state !== 'running') {
-                        await Tone.start();
+                    if (this.audioContext.state === 'suspended') {
+                        await this.audioContext.resume();
                     }
                 } catch (error) {
-                    console.error('Tone.js start failed:', error);
+                    console.error('Audio context start failed:', error);
                 }
                 
                 // 選択された楽器から選択
