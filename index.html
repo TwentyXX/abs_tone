@@ -615,16 +615,16 @@
                         }).toDestination()
                     };
                     
-                    // 聴覚特性に基づいた音量調整
-                    // 高音域が多い楽器は音量を下げ、低音域が豊富な楽器は音量を上げる
-                    this.instruments.piano.volume.value = -8;   // バランスの良い楽器なので標準
-                    this.instruments.organ.volume.value = -10;  // 低音域が豊富なので少し上げる
-                    this.instruments.guitar.volume.value = -9;  // 中音域中心なので標準的
-                    this.instruments.violin.volume.value = -18; // 高音域が刺激的なので大幅に下げる
-                    this.instruments.trumpet.volume.value = -20; // 高音域が非常に刺激的なので最も下げる
-                    this.instruments.flute.volume.value = -16;  // 高音域が多いので下げる
-                    this.instruments.bell.volume.value = -22;   // 高周波成分が多いので最も下げる
-                    this.instruments.synth.volume.value = -12;  // 設定可能なので中程度
+                    // 聴覚特性に基づいた音量調整（大げさに調整）
+                    // 高音域が多い楽器は大幅に音量を下げ、低音域が豊富な楽器は大幅に上げる
+                    this.instruments.piano.volume.value = -5;   // バランスの良い楽器なので上げる
+                    this.instruments.organ.volume.value = -3;   // 低音域が豊富なので大幅に上げる
+                    this.instruments.guitar.volume.value = -6;  // 中音域中心なので少し上げる
+                    this.instruments.violin.volume.value = -25; // 高音域が刺激的なので極端に下げる
+                    this.instruments.trumpet.volume.value = -28; // 高音域が非常に刺激的なので最も下げる
+                    this.instruments.flute.volume.value = -22;  // 高音域が多いので大幅に下げる
+                    this.instruments.bell.volume.value = -30;   // 高周波成分が多いので極端に下げる
+                    this.instruments.synth.volume.value = -8;   // 設定可能なので少し上げる
                     
                 } catch (error) {
                     console.error('Audio initialization failed:', error);
@@ -843,28 +843,36 @@
                 let correction = 1.0;
                 
                 if (f < 220) {
-                    // 極低音域の補正（220Hz以下）- 大幅に強調
+                    // 極低音域の補正（220Hz以下）- 極端に強調
                     const logRatio = Math.log10(220 / f);
-                    correction = 1.0 + (logRatio * 0.8); // 低音域を大幅に強調
+                    correction = 1.0 + (logRatio * 1.5); // 低音域を極端に強調
+                } else if (f < 440) {
+                    // 220Hz-440Hz - 50%減衰を目安に調整
+                    const ratio = (f - 220) / (440 - 220);
+                    correction = 1.0 - (ratio * 0.5); // 220Hzから50%減衰
                 } else if (f < 660) {
-                    // 220Hz-660Hz - 70%減衰を目安に調整
-                    const ratio = (f - 220) / (660 - 220);
-                    correction = 1.0 - (ratio * 0.7); // 220Hzから70%減衰
+                    // 440Hz-660Hz - 80%減衰
+                    const ratio = (f - 440) / (660 - 440);
+                    correction = 0.5 - (ratio * 0.3); // 50%から20%へ
                 } else if (f < 880) {
-                    // 660Hz-880Hz - 75%減衰
+                    // 660Hz-880Hz - 85%減衰
                     const ratio = (f - 660) / (880 - 660);
-                    correction = 0.3 - (ratio * 0.05); // 30%から25%へ
+                    correction = 0.2 - (ratio * 0.05); // 20%から15%へ
+                } else if (f < 1320) {
+                    // 880Hz-1320Hz - 90%減衰
+                    const ratio = (f - 880) / (1320 - 880);
+                    correction = 0.15 - (ratio * 0.08); // 15%から7%へ
                 } else if (f < 1760) {
-                    // 880Hz-1760Hz - 85%減衰
-                    const ratio = (f - 880) / (1760 - 880);
-                    correction = 0.25 - (ratio * 0.1); // 25%から15%へ
+                    // 1320Hz-1760Hz - 95%減衰
+                    const ratio = (f - 1320) / (1760 - 1320);
+                    correction = 0.07 - (ratio * 0.04); // 7%から3%へ
                 } else {
-                    // 1760Hz以上 - 90%減衰で安定
-                    correction = 0.1;
+                    // 1760Hz以上 - 97%減衰で安定
+                    correction = 0.03;
                 }
                 
-                // 補正値を0.05-2.0の範囲に制限
-                return Math.max(0.05, Math.min(2.0, correction));
+                // 補正値を0.02-3.0の範囲に制限
+                return Math.max(0.02, Math.min(3.0, correction));
             }
             
             async playSequence(notes, interval = 0.8) {
