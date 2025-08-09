@@ -534,6 +534,7 @@
                 <button id="checkAnswer" disabled>答え合わせ (スペースキー)</button>
                 <button id="nextQuestion" disabled>次の問題</button>
                 <button id="clearLog" onclick="game.clearLog()">ログクリア</button>
+                <button id="clearAllData" onclick="game.clearAllData()" style="background: #e74c3c;">全データクリア</button>
             </div>
             
             <div style="margin-top: 20px;">
@@ -616,6 +617,7 @@
                 };
                 
                 this.initializeAudio();
+                this.loadFromCookies();
                 this.createPiano();
                 this.bindEvents();
                 this.updateDifficultySettings();
@@ -1512,6 +1514,9 @@
             updateScore() {
                 document.getElementById('correct').textContent = this.correctCount;
                 document.getElementById('wrong').textContent = this.wrongCount;
+                
+                // スコアをCookieに保存
+                this.saveGameStateToCookies();
             }
             
             toggleDarkMode(enabled) {
@@ -1530,6 +1535,158 @@
                 if (savedDarkMode === 'true') {
                     document.getElementById('darkMode').checked = true;
                     this.toggleDarkMode(true);
+                }
+            }
+            
+            // Cookie操作のヘルパーメソッド
+            setCookie(name, value, days = 365) {
+                const expires = new Date();
+                expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+                document.cookie = `${name}=${encodeURIComponent(JSON.stringify(value))};expires=${expires.toUTCString()};path=/`;
+            }
+            
+            getCookie(name) {
+                const nameEQ = name + "=";
+                const ca = document.cookie.split(';');
+                for (let i = 0; i < ca.length; i++) {
+                    let c = ca[i];
+                    while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+                    if (c.indexOf(nameEQ) === 0) {
+                        try {
+                            return JSON.parse(decodeURIComponent(c.substring(nameEQ.length, c.length)));
+                        } catch (e) {
+                            return null;
+                        }
+                    }
+                }
+                return null;
+            }
+            
+            deleteCookie(name) {
+                document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/`;
+            }
+            
+            // 設定をCookieに保存
+            saveSettingsToCookies() {
+                const settings = {
+                    difficulty: document.getElementById('difficulty').value,
+                    octaveStart: document.getElementById('octaveStart').value,
+                    octaveEnd: document.getElementById('octaveEnd').value,
+                    sequenceCount: document.getElementById('sequenceCount').value,
+                    chordCount: document.getElementById('chordCount').value,
+                    timeBombMode: document.getElementById('timeBombMode').checked,
+                    timeLimit: document.getElementById('timeLimit').value,
+                    autoNext: document.getElementById('autoNext').checked,
+                    autoNextDelay: document.getElementById('autoNextDelay').value,
+                    octaveIgnoreMode: document.getElementById('octaveIgnoreMode').checked,
+                    darkMode: document.getElementById('darkMode').checked,
+                    beginnerMode: document.getElementById('beginnerMode').checked,
+                    loudnessCorrection: document.getElementById('loudnessCorrection').checked,
+                    instruments: {}
+                };
+                
+                // 楽器選択状態を保存
+                this.instrumentNames.forEach(instrument => {
+                    settings.instruments[instrument] = document.getElementById(`instrument-${instrument}`).checked;
+                });
+                
+                this.setCookie('pianoGameSettings', settings);
+            }
+            
+            // ゲーム状態をCookieに保存
+            saveGameStateToCookies() {
+                const gameState = {
+                    correctCount: this.correctCount,
+                    wrongCount: this.wrongCount,
+                    gameLog: this.gameLog,
+                    lastSettings: this.lastSettings
+                };
+                
+                this.setCookie('pianoGameState', gameState);
+            }
+            
+            // Cookieから設定とゲーム状態を読み込み
+            loadFromCookies() {
+                // 設定を読み込み
+                const savedSettings = this.getCookie('pianoGameSettings');
+                if (savedSettings) {
+                    // 基本設定
+                    if (savedSettings.difficulty) document.getElementById('difficulty').value = savedSettings.difficulty;
+                    if (savedSettings.octaveStart) document.getElementById('octaveStart').value = savedSettings.octaveStart;
+                    if (savedSettings.octaveEnd) document.getElementById('octaveEnd').value = savedSettings.octaveEnd;
+                    if (savedSettings.sequenceCount) document.getElementById('sequenceCount').value = savedSettings.sequenceCount;
+                    if (savedSettings.chordCount) document.getElementById('chordCount').value = savedSettings.chordCount;
+                    if (savedSettings.timeLimit) document.getElementById('timeLimit').value = savedSettings.timeLimit;
+                    if (savedSettings.autoNextDelay) document.getElementById('autoNextDelay').value = savedSettings.autoNextDelay;
+                    
+                    // チェックボックス設定
+                    document.getElementById('timeBombMode').checked = savedSettings.timeBombMode || false;
+                    document.getElementById('autoNext').checked = savedSettings.autoNext || false;
+                    document.getElementById('octaveIgnoreMode').checked = savedSettings.octaveIgnoreMode || false;
+                    document.getElementById('darkMode').checked = savedSettings.darkMode || false;
+                    document.getElementById('beginnerMode').checked = savedSettings.beginnerMode || false;
+                    document.getElementById('loudnessCorrection').checked = savedSettings.loudnessCorrection !== false; // デフォルトtrue
+                    
+                    // 楽器選択状態を復元
+                    if (savedSettings.instruments) {
+                        this.instrumentNames.forEach(instrument => {
+                            const checkbox = document.getElementById(`instrument-${instrument}`);
+                            if (savedSettings.instruments[instrument] !== undefined) {
+                                checkbox.checked = savedSettings.instruments[instrument];
+                            }
+                        });
+                    }
+                    
+                    // 設定に応じてUIを更新
+                    this.timeBombMode = savedSettings.timeBombMode || false;
+                    this.autoNext = savedSettings.autoNext || false;
+                    this.octaveIgnoreMode = savedSettings.octaveIgnoreMode || false;
+                    this.beginnerMode = savedSettings.beginnerMode || false;
+                    this.loudnessCorrection = savedSettings.loudnessCorrection !== false;
+                    
+                    // 設定表示を更新
+                    document.getElementById('timeBombSettings').style.display = this.timeBombMode ? 'inline' : 'none';
+                    document.getElementById('autoNextSettings').style.display = this.autoNext ? 'inline' : 'none';
+                    
+                    if (savedSettings.darkMode) {
+                        this.toggleDarkMode(true);
+                    }
+                }
+                
+                // ゲーム状態を読み込み
+                const savedGameState = this.getCookie('pianoGameState');
+                if (savedGameState) {
+                    this.correctCount = savedGameState.correctCount || 0;
+                    this.wrongCount = savedGameState.wrongCount || 0;
+                    this.gameLog = savedGameState.gameLog || [];
+                    this.lastSettings = savedGameState.lastSettings || null;
+                    
+                    // スコア表示を更新
+                    this.updateScore();
+                    
+                    // ログ表示を更新
+                    this.updateLogDisplay();
+                }
+            }
+            
+            // データをクリア
+            clearAllData() {
+                if (confirm('すべてのデータ（設定、ログ、スコア）をクリアしますか？')) {
+                    this.deleteCookie('pianoGameSettings');
+                    this.deleteCookie('pianoGameState');
+                    
+                    // ゲーム状態をリセット
+                    this.correctCount = 0;
+                    this.wrongCount = 0;
+                    this.gameLog = [];
+                    this.lastSettings = null;
+                    
+                    // 表示を更新
+                    this.updateScore();
+                    this.updateLogDisplay();
+                    
+                    alert('すべてのデータがクリアされました。ページを再読み込みして初期設定に戻ります。');
+                    location.reload();
                 }
             }
             
@@ -1581,6 +1738,9 @@
                 this.gameLog.push(logEntry);
                 this.updateLogDisplay();
                 
+                // ログをCookieに保存
+                this.saveGameStateToCookies();
+                
                 // 10問ごとに統計を出力
                 if (questionNumber % 10 === 0) {
                     this.outputStatistics();
@@ -1613,6 +1773,9 @@
                     this.gameLog.push(logEntry);
                     this.lastSettings = currentSettings;
                     this.updateLogDisplay();
+                    
+                    // 設定変更をCookieに保存
+                    this.saveGameStateToCookies();
                 }
             }
             
@@ -1679,6 +1842,9 @@
                 
                 this.gameLog.push(logEntry);
                 this.updateLogDisplay();
+                
+                // 統計をCookieに保存
+                this.saveGameStateToCookies();
             }
             
             speakNotes(notes) {
@@ -1727,16 +1893,43 @@
             bindEvents() {
                 document.getElementById('difficulty').addEventListener('change', () => {
                     this.updateDifficultySettings();
+                    this.saveSettingsToCookies();
+                });
+                
+                document.getElementById('octaveStart').addEventListener('change', () => {
+                    this.saveSettingsToCookies();
+                });
+                
+                document.getElementById('octaveEnd').addEventListener('change', () => {
+                    this.saveSettingsToCookies();
+                });
+                
+                document.getElementById('sequenceCount').addEventListener('change', () => {
+                    this.saveSettingsToCookies();
+                });
+                
+                document.getElementById('chordCount').addEventListener('change', () => {
+                    this.saveSettingsToCookies();
+                });
+                
+                document.getElementById('timeLimit').addEventListener('change', () => {
+                    this.saveSettingsToCookies();
+                });
+                
+                document.getElementById('autoNextDelay').addEventListener('change', () => {
+                    this.saveSettingsToCookies();
                 });
                 
                 document.getElementById('timeBombMode').addEventListener('change', (e) => {
                     const timeBombSettings = document.getElementById('timeBombSettings');
                     timeBombSettings.style.display = e.target.checked ? 'inline' : 'none';
+                    this.saveSettingsToCookies();
                 });
                 
                 document.getElementById('autoNext').addEventListener('change', (e) => {
                     const autoNextSettings = document.getElementById('autoNextSettings');
                     autoNextSettings.style.display = e.target.checked ? 'inline' : 'none';
+                    this.saveSettingsToCookies();
                 });
                 
                 document.getElementById('octaveIgnoreMode').addEventListener('change', (e) => {
@@ -1747,10 +1940,12 @@
                         piano.classList.remove('octave-ignore');
                     }
                     this.createPiano();
+                    this.saveSettingsToCookies();
                 });
                 
                 document.getElementById('darkMode').addEventListener('change', (e) => {
                     this.toggleDarkMode(e.target.checked);
+                    this.saveSettingsToCookies();
                 });
                 
                 document.getElementById('beginnerMode').addEventListener('change', (e) => {
@@ -1759,16 +1954,19 @@
                         alert('お使いのブラウザは音声合成機能に対応していません。');
                         e.target.checked = false;
                     }
+                    this.saveSettingsToCookies();
                 });
                 
                 document.getElementById('loudnessCorrection').addEventListener('change', (e) => {
                     this.loudnessCorrection = e.target.checked;
+                    this.saveSettingsToCookies();
                 });
                 
                 // 楽器選択のイベントリスナー
                 this.instrumentNames.forEach(instrument => {
                     document.getElementById(`instrument-${instrument}`).addEventListener('change', () => {
                         this.validateInstrumentSelection();
+                        this.saveSettingsToCookies();
                     });
                 });
                 
