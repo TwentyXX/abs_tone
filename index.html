@@ -474,6 +474,36 @@
                     <input type="checkbox" id="loudnessCorrection" checked> 聴覚特性補正（音量自動調整）
                 </label>
             </div>
+            
+            <div class="setting-group">
+                <label style="width: 100%; margin-bottom: 10px;">使用する楽器を選択:</label>
+                <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-left: 20px;">
+                    <label style="min-width: auto;">
+                        <input type="checkbox" id="instrument-piano" checked> ピアノ
+                    </label>
+                    <label style="min-width: auto;">
+                        <input type="checkbox" id="instrument-organ" checked> オルガン
+                    </label>
+                    <label style="min-width: auto;">
+                        <input type="checkbox" id="instrument-guitar" checked> ギター
+                    </label>
+                    <label style="min-width: auto;">
+                        <input type="checkbox" id="instrument-violin" checked> バイオリン
+                    </label>
+                    <label style="min-width: auto;">
+                        <input type="checkbox" id="instrument-trumpet" checked> トランペット
+                    </label>
+                    <label style="min-width: auto;">
+                        <input type="checkbox" id="instrument-flute" checked> フルート
+                    </label>
+                    <label style="min-width: auto;">
+                        <input type="checkbox" id="instrument-bell" checked> ベル
+                    </label>
+                    <label style="min-width: auto;">
+                        <input type="checkbox" id="instrument-synth"> シンセサイザー
+                    </label>
+                </div>
+            </div>
         </div>
         
         <div class="game-area">
@@ -961,8 +991,13 @@
                     console.error('Tone.js start failed:', error);
                 }
                 
-                // ランダムな楽器を選択
-                this.currentInstrument = this.instrumentNames[Math.floor(Math.random() * this.instrumentNames.length)];
+                // 選択された楽器から選択
+                const availableInstruments = this.getSelectedInstruments();
+                if (availableInstruments.length === 0) {
+                    alert('楽器を少なくとも1つ選択してください。');
+                    return;
+                }
+                this.currentInstrument = availableInstruments[Math.floor(Math.random() * availableInstruments.length)];
                 
                 this.currentQuestion = this.generateQuestion();
                 this.gameActive = true;
@@ -1336,6 +1371,32 @@
                 }
             }
             
+            getSelectedInstruments() {
+                const selectedInstruments = [];
+                this.instrumentNames.forEach(instrument => {
+                    if (document.getElementById(`instrument-${instrument}`).checked) {
+                        selectedInstruments.push(instrument);
+                    }
+                });
+                return selectedInstruments;
+            }
+            
+            validateInstrumentSelection() {
+                const selectedInstruments = this.getSelectedInstruments();
+                if (selectedInstruments.length === 0) {
+                    // 最後のチェックボックスが外された場合、警告を表示して元に戻す
+                    alert('楽器を少なくとも1つ選択してください。');
+                    // 最後に外されたチェックボックスを再度チェック
+                    this.instrumentNames.forEach(instrument => {
+                        const checkbox = document.getElementById(`instrument-${instrument}`);
+                        if (!checkbox.checked) {
+                            checkbox.checked = true;
+                            return;
+                        }
+                    });
+                }
+            }
+            
             speakNotes(notes) {
                 if (!this.beginnerMode || !this.speechSynthesis) return;
                 
@@ -1418,6 +1479,13 @@
                 
                 document.getElementById('loudnessCorrection').addEventListener('change', (e) => {
                     this.loudnessCorrection = e.target.checked;
+                });
+                
+                // 楽器選択のイベントリスナー
+                this.instrumentNames.forEach(instrument => {
+                    document.getElementById(`instrument-${instrument}`).addEventListener('change', () => {
+                        this.validateInstrumentSelection();
+                    });
                 });
                 
                 document.getElementById('newGame').addEventListener('click', () => {
