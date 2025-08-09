@@ -718,10 +718,10 @@
                 
                 this.initializeAudio();
                 this.loadFromCookies();
-                this.createPiano();
                 this.bindEvents();
                 this.updateDifficultySettings();
                 this.loadDarkModePreference();
+                this.createPiano(); // 設定読み込み後にピアノを作成
             }
             
             async initializeAudio() {
@@ -1998,6 +1998,14 @@
                     // 設定表示を更新
                     document.getElementById('timeBombSettings').style.display = this.timeBombMode ? 'inline' : 'none';
                     document.getElementById('autoNextSettings').style.display = this.autoNext ? 'inline' : 'none';
+                    
+                    // オクターブ無視モードのCSSクラスを適用
+                    const piano = document.getElementById('piano');
+                    if (this.octaveIgnoreMode) {
+                        piano.classList.add('octave-ignore');
+                    } else {
+                        piano.classList.remove('octave-ignore');
+                    }
                     
                     if (savedSettings.darkMode) {
                         this.toggleDarkMode(true);
