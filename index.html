@@ -460,6 +460,12 @@
                     <input type="checkbox" id="beginnerMode"> 初心者モード（音名読み上げ）
                 </label>
             </div>
+            
+            <div class="setting-group">
+                <label>
+                    <input type="checkbox" id="loudnessCorrection" checked> 聴覚特性補正（音量自動調整）
+                </label>
+            </div>
         </div>
         
         <div class="game-area">
@@ -529,6 +535,9 @@
                     'bell': 'ベル',
                     'synth': 'シンセサイザー'
                 };
+                
+                // 聴覚特性補正機能
+                this.loudnessCorrection = true;
                 
                 // 音名マッピング（日本式）- 鍵盤表示用
                 this.noteNames = {
@@ -793,7 +802,11 @@
                     oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
                     oscillator.type = 'sine';
                     
-                    gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
+                    // 聴覚特性に合わせた音量補正を適用
+                    const correctionFactor = this.calculateLoudnessCorrection(frequency);
+                    const adjustedVolume = 0.3 * correctionFactor;
+                    
+                    gainNode.gain.setValueAtTime(adjustedVolume, this.audioContext.currentTime);
                     gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
                     
                     oscillator.start(this.audioContext.currentTime);
@@ -816,6 +829,41 @@
                     return noteNames[n] + octave;
                 }
                 return 'C4';
+            }
+            
+            calculateLoudnessCorrection(frequency) {
+                if (!this.loudnessCorrection) return 1.0;
+                
+                // 聴覚特性に合わせた補正（高音域の感度が非常に高い）
+                // 440Hz（A4）付近から減衰を開始
+                const f = frequency;
+                
+                // 等ラウドネス曲線の近似
+                let correction = 1.0;
+                
+                if (f < 220) {
+                    // 極低音域の補正（220Hz以下）- 大幅に強調
+                    const logRatio = Math.log10(220 / f);
+                    correction = 1.0 + (logRatio * 0.8); // 低音域を大幅に強調
+                } else if (f < 660) {
+                    // 220Hz-660Hz - 70%減衰を目安に調整
+                    const ratio = (f - 220) / (660 - 220);
+                    correction = 1.0 - (ratio * 0.7); // 220Hzから70%減衰
+                } else if (f < 880) {
+                    // 660Hz-880Hz - 75%減衰
+                    const ratio = (f - 660) / (880 - 660);
+                    correction = 0.3 - (ratio * 0.05); // 30%から25%へ
+                } else if (f < 1760) {
+                    // 880Hz-1760Hz - 85%減衰
+                    const ratio = (f - 880) / (1760 - 880);
+                    correction = 0.25 - (ratio * 0.1); // 25%から15%へ
+                } else {
+                    // 1760Hz以上 - 90%減衰で安定
+                    correction = 0.1;
+                }
+                
+                // 補正値を0.05-2.0の範囲に制限
+                return Math.max(0.05, Math.min(2.0, correction));
             }
             
             async playSequence(notes, interval = 0.8) {
@@ -1349,6 +1397,10 @@
                         alert('お使いのブラウザは音声合成機能に対応していません。');
                         e.target.checked = false;
                     }
+                });
+                
+                document.getElementById('loudnessCorrection').addEventListener('change', (e) => {
+                    this.loudnessCorrection = e.target.checked;
                 });
                 
                 document.getElementById('newGame').addEventListener('click', () => {
