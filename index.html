@@ -1436,7 +1436,7 @@
                     this.startNewGame();
                 });
                 
-                // スペースキーで答え合わせ
+                // キーボードイベント
                 document.addEventListener('keydown', (event) => {
                     if (event.code === 'Space') {
                         event.preventDefault();
@@ -1444,6 +1444,37 @@
                             this.checkAnswer();
                         } else if (this.answered) {
                             this.startNewGame();
+                        }
+                    }
+                    
+                    // ピアノキーのマッピング
+                    const keyMap = {
+                        'KeyZ': 'C',
+                        'KeyS': 'C#',
+                        'KeyX': 'D',
+                        'KeyD': 'D#',
+                        'KeyC': 'E',
+                        'KeyV': 'F',
+                        'KeyG': 'F#',
+                        'KeyB': 'G',
+                        'KeyH': 'G#',
+                        'KeyN': 'A',
+                        'KeyJ': 'A#',
+                        'KeyM': 'B'
+                    };
+                    
+                    if (keyMap[event.code]) {
+                        event.preventDefault();
+                        const note = keyMap[event.code];
+                        const octave = this.octaveIgnoreMode ? '4' : '4'; // オクターブ無視モードでは4オクターブ固定
+                        const fullNote = note + octave;
+                        
+                        // ゲーム中の場合は選択処理
+                        if (this.gameActive && !this.answered) {
+                            this.handleKeyClick(fullNote);
+                        } else {
+                            // ゲーム中でない場合は音を再生するだけ
+                            this.playNote(this.noteToFrequency(fullNote), 1.0, false);
                         }
                     }
                 });
