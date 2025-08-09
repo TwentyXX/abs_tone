@@ -511,6 +511,81 @@
                     <label style="min-width: auto;">
                         <input type="checkbox" id="instrument-whistle" checked> 口笛
                     </label>
+                    <label style="min-width: auto;">
+                        <input type="checkbox" id="instrument-cello"> チェロ
+                    </label>
+                    <label style="min-width: auto;">
+                        <input type="checkbox" id="instrument-viola"> ビオラ
+                    </label>
+                    <label style="min-width: auto;">
+                        <input type="checkbox" id="instrument-contrabass"> コントラバス
+                    </label>
+                    <label style="min-width: auto;">
+                        <input type="checkbox" id="instrument-harp"> ハープ
+                    </label>
+                    <label style="min-width: auto;">
+                        <input type="checkbox" id="instrument-mandolin"> マンドリン
+                    </label>
+                    <label style="min-width: auto;">
+                        <input type="checkbox" id="instrument-saxophone"> サックス
+                    </label>
+                    <label style="min-width: auto;">
+                        <input type="checkbox" id="instrument-clarinet"> クラリネット
+                    </label>
+                    <label style="min-width: auto;">
+                        <input type="checkbox" id="instrument-oboe"> オーボエ
+                    </label>
+                    <label style="min-width: auto;">
+                        <input type="checkbox" id="instrument-horn"> ホルン
+                    </label>
+                    <label style="min-width: auto;">
+                        <input type="checkbox" id="instrument-trombone"> トロンボーン
+                    </label>
+                    <label style="min-width: auto;">
+                        <input type="checkbox" id="instrument-tuba"> チューバ
+                    </label>
+                    <label style="min-width: auto;">
+                        <input type="checkbox" id="instrument-marimba"> マリンバ
+                    </label>
+                    <label style="min-width: auto;">
+                        <input type="checkbox" id="instrument-vibraphone"> ビブラフォン
+                    </label>
+                    <label style="min-width: auto;">
+                        <input type="checkbox" id="instrument-chimes"> チャイム
+                    </label>
+                    <label style="min-width: auto;">
+                        <input type="checkbox" id="instrument-accordion"> アコーディオン
+                    </label>
+                    <label style="min-width: auto;">
+                        <input type="checkbox" id="instrument-harmonica"> ハーモニカ
+                    </label>
+                    <label style="min-width: auto;">
+                        <input type="checkbox" id="instrument-ocarina"> オカリナ
+                    </label>
+                    <label style="min-width: auto;">
+                        <input type="checkbox" id="instrument-shakuhachi"> 尺八
+                    </label>
+                    <label style="min-width: auto;">
+                        <input type="checkbox" id="instrument-koto"> 琴
+                    </label>
+                    <label style="min-width: auto;">
+                        <input type="checkbox" id="instrument-gamelan"> ガムラン
+                    </label>
+                    <label style="min-width: auto;">
+                        <input type="checkbox" id="instrument-singing_bowl"> シンギングボウル
+                    </label>
+                    <label style="min-width: auto;">
+                        <input type="checkbox" id="instrument-didgeridoo"> ディジュリドゥ
+                    </label>
+                    <label style="min-width: auto;">
+                        <input type="checkbox" id="instrument-hang_drum"> ハングドラム
+                    </label>
+                    <label style="min-width: auto;">
+                        <input type="checkbox" id="instrument-glass_harp"> グラスハープ
+                    </label>
+                    <label style="min-width: auto;">
+                        <input type="checkbox" id="instrument-tsugaru_shamisen"> 津軽三味線
+                    </label>
                 </div>
             </div>
         </div>
@@ -582,7 +657,7 @@
                 
                 // 楽器の定義（Tone.jsを使用）
                 this.instruments = {};
-                this.instrumentNames = ['piano', 'organ', 'guitar', 'violin', 'trumpet', 'flute', 'bell', 'synth', 'voice', 'choir', 'whistle'];
+                this.instrumentNames = ['piano', 'organ', 'guitar', 'violin', 'trumpet', 'flute', 'bell', 'synth', 'voice', 'choir', 'whistle', 'cello', 'viola', 'contrabass', 'harp', 'mandolin', 'saxophone', 'clarinet', 'oboe', 'horn', 'trombone', 'tuba', 'marimba', 'vibraphone', 'chimes', 'accordion', 'harmonica', 'ocarina', 'shakuhachi', 'koto', 'gamelan', 'singing_bowl', 'didgeridoo', 'hang_drum', 'glass_harp', 'tsugaru_shamisen'];
                 
                 // 楽器名の日本語マッピング
                 this.instrumentNameMap = {
@@ -596,7 +671,32 @@
                     'synth': 'シンセサイザー',
                     'voice': '人声',
                     'choir': '合唱',
-                    'whistle': '口笛'
+                    'whistle': '口笛',
+                    'cello': 'チェロ',
+                    'viola': 'ビオラ',
+                    'contrabass': 'コントラバス',
+                    'harp': 'ハープ',
+                    'mandolin': 'マンドリン',
+                    'saxophone': 'サックス',
+                    'clarinet': 'クラリネット',
+                    'oboe': 'オーボエ',
+                    'horn': 'ホルン',
+                    'trombone': 'トロンボーン',
+                    'tuba': 'チューバ',
+                    'marimba': 'マリンバ',
+                    'vibraphone': 'ビブラフォン',
+                    'chimes': 'チャイム',
+                    'accordion': 'アコーディオン',
+                    'harmonica': 'ハーモニカ',
+                    'ocarina': 'オカリナ',
+                    'shakuhachi': '尺八',
+                    'koto': '琴',
+                    'gamelan': 'ガムラン',
+                    'singing_bowl': 'シンギングボウル',
+                    'didgeridoo': 'ディジュリドゥ',
+                    'hang_drum': 'ハングドラム',
+                    'glass_harp': 'グラスハープ',
+                    'tsugaru_shamisen': '津軽三味線'
                 };
                 
                 // 聴覚特性補正機能
@@ -732,6 +832,232 @@
                             release: 0.3,
                             filterFreq: 4000,
                             filterQ: 5
+                        },
+                        'cello': {
+                            harmonics: [0.9, 1.0, 0.7, 0.5, 0.3, 0.2, 0.15, 0.1],
+                            attack: 0.15,
+                            decay: 0.2,
+                            sustain: 0.8,
+                            release: 1.5,
+                            filterFreq: 2500,
+                            filterQ: 2.5
+                        },
+                        'viola': {
+                            harmonics: [0.85, 1.0, 0.65, 0.45, 0.25, 0.15, 0.1, 0.05],
+                            attack: 0.18,
+                            decay: 0.15,
+                            sustain: 0.85,
+                            release: 1.2,
+                            filterFreq: 3000,
+                            filterQ: 2.8
+                        },
+                        'contrabass': {
+                            harmonics: [1.0, 0.8, 0.6, 0.4, 0.2, 0.1, 0.05],
+                            attack: 0.25,
+                            decay: 0.3,
+                            sustain: 0.7,
+                            release: 2.0,
+                            filterFreq: 1500,
+                            filterQ: 2
+                        },
+                        'harp': {
+                            harmonics: [1.0, 0.4, 0.2, 0.1, 0.05, 0.02],
+                            attack: 0.01,
+                            decay: 1.5,
+                            sustain: 0.1,
+                            release: 3.0,
+                            filterFreq: 4000,
+                            filterQ: 0.8
+                        },
+                        'mandolin': {
+                            harmonics: [1.0, 0.6, 0.3, 0.15, 0.08, 0.04],
+                            attack: 0.005,
+                            decay: 0.5,
+                            sustain: 0.2,
+                            release: 1.5,
+                            filterFreq: 5000,
+                            filterQ: 1.2
+                        },
+                        'saxophone': {
+                            harmonics: [0.7, 1.0, 0.8, 0.6, 0.4, 0.3, 0.2, 0.1],
+                            attack: 0.1,
+                            decay: 0.2,
+                            sustain: 0.8,
+                            release: 0.8,
+                            filterFreq: 2800,
+                            filterQ: 2.5
+                        },
+                        'clarinet': {
+                            harmonics: [1.0, 0.1, 0.8, 0.05, 0.6, 0.02, 0.4, 0.01],
+                            attack: 0.08,
+                            decay: 0.15,
+                            sustain: 0.9,
+                            release: 0.6,
+                            filterFreq: 3200,
+                            filterQ: 3
+                        },
+                        'oboe': {
+                            harmonics: [0.8, 1.0, 0.9, 0.7, 0.5, 0.3, 0.2, 0.1],
+                            attack: 0.12,
+                            decay: 0.1,
+                            sustain: 0.85,
+                            release: 0.7,
+                            filterFreq: 3500,
+                            filterQ: 4
+                        },
+                        'horn': {
+                            harmonics: [1.0, 0.8, 0.6, 0.4, 0.3, 0.2, 0.1, 0.05],
+                            attack: 0.15,
+                            decay: 0.2,
+                            sustain: 0.7,
+                            release: 1.0,
+                            filterFreq: 2200,
+                            filterQ: 2
+                        },
+                        'trombone': {
+                            harmonics: [1.0, 0.9, 0.7, 0.5, 0.3, 0.2, 0.1],
+                            attack: 0.12,
+                            decay: 0.25,
+                            sustain: 0.8,
+                            release: 0.8,
+                            filterFreq: 2000,
+                            filterQ: 1.8
+                        },
+                        'tuba': {
+                            harmonics: [1.0, 0.8, 0.6, 0.4, 0.2, 0.1, 0.05],
+                            attack: 0.2,
+                            decay: 0.3,
+                            sustain: 0.8,
+                            release: 1.2,
+                            filterFreq: 1200,
+                            filterQ: 1.5
+                        },
+                        'marimba': {
+                            harmonics: [1.0, 0.3, 0.1, 0.05, 0.02],
+                            attack: 0.01,
+                            decay: 1.0,
+                            sustain: 0.2,
+                            release: 2.5,
+                            filterFreq: 3000,
+                            filterQ: 1
+                        },
+                        'vibraphone': {
+                            harmonics: [1.0, 0.4, 0.2, 0.1, 0.05, 0.02],
+                            attack: 0.02,
+                            decay: 2.0,
+                            sustain: 0.3,
+                            release: 4.0,
+                            filterFreq: 4000,
+                            filterQ: 0.8
+                        },
+                        'chimes': {
+                            harmonics: [1.0, 0.5, 0.3, 0.6, 0.2, 0.4, 0.1, 0.3],
+                            attack: 0.01,
+                            decay: 3.0,
+                            sustain: 0.1,
+                            release: 5.0,
+                            filterFreq: 6000,
+                            filterQ: 0.5
+                        },
+                        'accordion': {
+                            harmonics: [1.0, 0.7, 0.5, 0.3, 0.2, 0.1, 0.05],
+                            attack: 0.08,
+                            decay: 0.2,
+                            sustain: 0.8,
+                            release: 0.6,
+                            filterFreq: 2500,
+                            filterQ: 2
+                        },
+                        'harmonica': {
+                            harmonics: [1.0, 0.6, 0.4, 0.2, 0.1, 0.05],
+                            attack: 0.05,
+                            decay: 0.1,
+                            sustain: 0.9,
+                            release: 0.4,
+                            filterFreq: 3000,
+                            filterQ: 3
+                        },
+                        'ocarina': {
+                            harmonics: [1.0, 0.3, 0.1, 0.05, 0.02],
+                            attack: 0.08,
+                            decay: 0.15,
+                            sustain: 0.8,
+                            release: 0.6,
+                            filterFreq: 2800,
+                            filterQ: 2.5
+                        },
+                        'shakuhachi': {
+                            harmonics: [1.0, 0.4, 0.2, 0.1, 0.05, 0.02],
+                            attack: 0.2,
+                            decay: 0.3,
+                            sustain: 0.7,
+                            release: 1.5,
+                            filterFreq: 2000,
+                            filterQ: 1.5
+                        },
+                        'koto': {
+                            harmonics: [1.0, 0.5, 0.3, 0.2, 0.1, 0.05, 0.02],
+                            attack: 0.02,
+                            decay: 1.2,
+                            sustain: 0.2,
+                            release: 2.5,
+                            filterFreq: 3500,
+                            filterQ: 1.2
+                        },
+                        'gamelan': {
+                            harmonics: [1.0, 0.3, 0.8, 0.2, 0.6, 0.1, 0.4, 0.05, 0.3],
+                            attack: 0.02,
+                            decay: 2.5,
+                            sustain: 0.2,
+                            release: 4.0,
+                            filterFreq: 4500,
+                            filterQ: 0.8
+                        },
+                        'singing_bowl': {
+                            harmonics: [1.0, 0.7, 0.9, 0.4, 0.6, 0.3, 0.5, 0.2, 0.4],
+                            attack: 0.5,
+                            decay: 3.0,
+                            sustain: 0.8,
+                            release: 8.0,
+                            filterFreq: 3000,
+                            filterQ: 2
+                        },
+                        'didgeridoo': {
+                            harmonics: [1.0, 0.8, 0.3, 0.6, 0.2, 0.4, 0.1, 0.3],
+                            attack: 0.1,
+                            decay: 0.2,
+                            sustain: 0.9,
+                            release: 1.0,
+                            filterFreq: 800,
+                            filterQ: 2.5,
+                            formants: [200, 400, 800]
+                        },
+                        'hang_drum': {
+                            harmonics: [1.0, 0.5, 0.7, 0.3, 0.6, 0.2, 0.4, 0.1],
+                            attack: 0.01,
+                            decay: 1.5,
+                            sustain: 0.3,
+                            release: 3.0,
+                            filterFreq: 2500,
+                            filterQ: 1.5
+                        },
+                        'glass_harp': {
+                            harmonics: [1.0, 0.2, 0.8, 0.1, 0.6, 0.05, 0.4, 0.02],
+                            attack: 0.3,
+                            decay: 0.5,
+                            sustain: 0.9,
+                            release: 4.0,
+                            filterFreq: 5000,
+                            filterQ: 8
+                        },
+                        'tsugaru_shamisen': {
+                            harmonics: [1.0, 0.4, 0.7, 0.2, 0.5, 0.1, 0.3, 0.05],
+                            attack: 0.005,
+                            decay: 0.8,
+                            sustain: 0.1,
+                            release: 2.0,
+                            filterFreq: 4000,
+                            filterQ: 1.8
                         }
                     };
                     
@@ -824,7 +1150,32 @@
                     'synth': 0.1,
                     'voice': 0.3,
                     'choir': 0.2,
-                    'whistle': 0.06
+                    'whistle': 0.06,
+                    'cello': 0.1,
+                    'viola': 0.09,
+                    'contrabass': 0.15,
+                    'harp': 0.25,
+                    'mandolin': 0.2,
+                    'saxophone': 0.07,
+                    'clarinet': 0.08,
+                    'oboe': 0.06,
+                    'horn': 0.08,
+                    'trombone': 0.06,
+                    'tuba': 0.12,
+                    'marimba': 0.3,
+                    'vibraphone': 0.2,
+                    'chimes': 0.15,
+                    'accordion': 0.25,
+                    'harmonica': 0.2,
+                    'ocarina': 0.15,
+                    'shakuhachi': 0.18,
+                    'koto': 0.25,
+                    'gamelan': 0.08,
+                    'singing_bowl': 0.12,
+                    'didgeridoo': 0.4,
+                    'hang_drum': 0.2,
+                    'glass_harp': 0.1,
+                    'tsugaru_shamisen': 0.3
                 };
                 return volumeMap[instrumentName] || 0.3;
             }
