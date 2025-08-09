@@ -502,6 +502,15 @@
                     <label style="min-width: auto;">
                         <input type="checkbox" id="instrument-synth"> シンセサイザー
                     </label>
+                    <label style="min-width: auto;">
+                        <input type="checkbox" id="instrument-voice" checked> 人声
+                    </label>
+                    <label style="min-width: auto;">
+                        <input type="checkbox" id="instrument-choir" checked> 合唱
+                    </label>
+                    <label style="min-width: auto;">
+                        <input type="checkbox" id="instrument-whistle" checked> 口笛
+                    </label>
                 </div>
             </div>
         </div>
@@ -560,7 +569,7 @@
                 
                 // 楽器の定義（Tone.jsを使用）
                 this.instruments = {};
-                this.instrumentNames = ['piano', 'organ', 'guitar', 'violin', 'trumpet', 'flute', 'bell', 'synth'];
+                this.instrumentNames = ['piano', 'organ', 'guitar', 'violin', 'trumpet', 'flute', 'bell', 'synth', 'voice', 'choir', 'whistle'];
                 
                 // 楽器名の日本語マッピング
                 this.instrumentNameMap = {
@@ -571,7 +580,10 @@
                     'trumpet': 'トランペット',
                     'flute': 'フルート',
                     'bell': 'ベル',
-                    'synth': 'シンセサイザー'
+                    'synth': 'シンセサイザー',
+                    'voice': '人声',
+                    'choir': '合唱',
+                    'whistle': '口笛'
                 };
                 
                 // 聴覚特性補正機能
@@ -650,6 +662,24 @@
                             envelope: { attack: 0.08, decay: 0.4, sustain: 0.3, release: 1.2 },
                             modulation: { type: 'square' },
                             modulationEnvelope: { attack: 0.5, decay: 0, sustain: 1, release: 0.5 }
+                        }).toDestination(),
+                        
+                        'voice': new Tone.Synth({
+                            oscillator: { type: 'triangle' },
+                            envelope: { attack: 0.1, decay: 0.3, sustain: 0.7, release: 1.0 }
+                        }).toDestination(),
+                        
+                        'choir': new Tone.PolySynth({
+                            voice: Tone.Synth,
+                            options: {
+                                oscillator: { type: 'sawtooth' },
+                                envelope: { attack: 0.2, decay: 0.4, sustain: 0.6, release: 1.5 }
+                            }
+                        }).toDestination(),
+                        
+                        'whistle': new Tone.Synth({
+                            oscillator: { type: 'sine' },
+                            envelope: { attack: 0.05, decay: 0.1, sustain: 0.8, release: 0.3 }
                         }).toDestination()
                     };
                     
@@ -662,7 +692,10 @@
                     this.instruments.trumpet.volume.value = -28; // 高音域が非常に刺激的なので最も下げる
                     this.instruments.flute.volume.value = -22;  // 高音域が多いので大幅に下げる
                     this.instruments.bell.volume.value = -30;   // 高周波成分が多いので極端に下げる
-                    this.instruments.synth.volume.value = -8;   // 設定可能なので少し上げる
+                    this.instruments.synth.volume.value = -18;  // シンセの音量を大幅に下げる
+                    this.instruments.voice.volume.value = -8;   // 人声は聞き取りやすいので標準的
+                    this.instruments.choir.volume.value = -10;  // 合唱は少し下げる
+                    this.instruments.whistle.volume.value = -20; // 口笛は高音域なので下げる
                     
                 } catch (error) {
                     console.error('Audio initialization failed:', error);
