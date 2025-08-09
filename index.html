@@ -533,7 +533,12 @@
                 <button id="playAgain" disabled>もう一度再生</button>
                 <button id="checkAnswer" disabled>答え合わせ (スペースキー)</button>
                 <button id="nextQuestion" disabled>次の問題</button>
-                <button id="exportLog" onclick="game.exportLog()">ログをエクスポート</button>
+                <button id="clearLog" onclick="game.clearLog()">ログクリア</button>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <label for="logOutput" style="font-weight: bold;">ゲームログ:</label>
+                <textarea id="logOutput" readonly style="width: 100%; height: 200px; font-family: monospace; font-size: 12px; margin-top: 5px; padding: 10px; border: 1px solid var(--border-color); background: var(--container-bg); color: var(--text-color);"></textarea>
             </div>
             
             <div class="result" id="result"></div>
@@ -569,6 +574,7 @@
                 this.currentInstrument = 'piano';
                 this.gameLog = [];
                 this.currentQuestionStartTime = null;
+                this.lastSettings = null;
                 
                 // 楽器の定義（Tone.jsを使用）
                 this.instruments = {};
@@ -1551,103 +1557,102 @@
             }
             
             logQuestionResult(isCorrect, selectedNotes, responseTime, answerTime, isTimeUp = false) {
+                // 設定変更をチェック
+                this.checkSettingsChange();
+                
+                // 音名に変換
+                const correctNoteNames = this.currentQuestion.notes.map(note => this.noteToDisplayName(note));
+                const selectedNoteNames = selectedNotes.map(note => this.noteToDisplayName(note));
+                
+                const questionNumber = this.gameLog.filter(entry => entry.type === 'question').length + 1;
+                const time = new Date().toLocaleTimeString('ja-JP');
+                const result = isCorrect ? '○' : '×';
+                const timeUpMark = isTimeUp ? '⏰' : '';
+                const responseTimeSec = (responseTime / 1000).toFixed(1);
+                
                 const logEntry = {
-                    timestamp: answerTime.toISOString(),
-                    questionNumber: this.gameLog.length + 1,
-                    difficulty: document.getElementById('difficulty').value,
-                    instrument: this.currentInstrument,
-                    instrumentJapanese: this.instrumentNameMap[this.currentInstrument],
-                    correctNotes: this.currentQuestion.notes,
-                    selectedNotes: selectedNotes,
-                    isCorrect: isCorrect,
-                    responseTimeMs: responseTime,
-                    responseTimeSec: (responseTime / 1000).toFixed(2),
-                    isTimeUp: isTimeUp,
-                    settings: {
-                        octaveIgnoreMode: this.octaveIgnoreMode,
-                        timeBombMode: this.timeBombMode,
-                        timeLimit: this.timeLimit,
-                        beginnerMode: this.beginnerMode,
-                        loudnessCorrection: this.loudnessCorrection,
-                        octaveRange: `${document.getElementById('octaveStart').value}-${document.getElementById('octaveEnd').value}`,
-                        sequenceCount: document.getElementById('sequenceCount').value,
-                        chordCount: document.getElementById('chordCount').value
-                    }
+                    type: 'question',
+                    text: `${time} Q${questionNumber} ${this.instrumentNameMap[this.currentInstrument]} ${correctNoteNames.join(',')} → ${selectedNoteNames.join(',') || '未回答'} ${result}${timeUpMark} ${responseTimeSec}s`
                 };
                 
                 this.gameLog.push(logEntry);
+                this.updateLogDisplay();
                 
-                // コンソールに詳細ログを出力
-                console.log('=== 音感ゲーム ログ ===');
-                console.log(`問題 #${logEntry.questionNumber}`);
-                console.log(`時刻: ${logEntry.timestamp}`);
-                console.log(`難易度: ${logEntry.difficulty}`);
-                console.log(`楽器: ${logEntry.instrumentJapanese} (${logEntry.instrument})`);
-                console.log(`正解: ${logEntry.correctNotes.join(', ')}`);
-                console.log(`回答: ${logEntry.selectedNotes.join(', ') || '未回答'}`);
-                console.log(`結果: ${isCorrect ? '正解' : '不正解'}${isTimeUp ? ' (時間切れ)' : ''}`);
-                console.log(`回答時間: ${logEntry.responseTimeSec}秒`);
-                console.log(`設定: オクターブ無視=${logEntry.settings.octaveIgnoreMode}, 時限爆弾=${logEntry.settings.timeBombMode}, 初心者=${logEntry.settings.beginnerMode}`);
-                console.log('==================');
-                
-                // 統計情報を出力
-                if (this.gameLog.length % 10 === 0) {
+                // 10問ごとに統計を出力
+                if (questionNumber % 10 === 0) {
                     this.outputStatistics();
                 }
             }
             
-            outputStatistics() {
-                const totalQuestions = this.gameLog.length;
-                const correctAnswers = this.gameLog.filter(log => log.isCorrect).length;
-                const accuracy = ((correctAnswers / totalQuestions) * 100).toFixed(1);
-                const averageResponseTime = (this.gameLog.reduce((sum, log) => sum + log.responseTimeMs, 0) / totalQuestions / 1000).toFixed(2);
-                const timeUpCount = this.gameLog.filter(log => log.isTimeUp).length;
-                
-                console.log('=== 統計情報 ===');
-                console.log(`総問題数: ${totalQuestions}`);
-                console.log(`正解数: ${correctAnswers}`);
-                console.log(`正答率: ${accuracy}%`);
-                console.log(`平均回答時間: ${averageResponseTime}秒`);
-                console.log(`時間切れ: ${timeUpCount}回`);
-                
-                // 楽器別統計
-                const instrumentStats = {};
-                this.gameLog.forEach(log => {
-                    if (!instrumentStats[log.instrument]) {
-                        instrumentStats[log.instrument] = { total: 0, correct: 0 };
-                    }
-                    instrumentStats[log.instrument].total++;
-                    if (log.isCorrect) {
-                        instrumentStats[log.instrument].correct++;
-                    }
-                });
-                
-                console.log('楽器別正答率:');
-                Object.entries(instrumentStats).forEach(([instrument, stats]) => {
-                    const rate = ((stats.correct / stats.total) * 100).toFixed(1);
-                    console.log(`  ${this.instrumentNameMap[instrument]}: ${rate}% (${stats.correct}/${stats.total})`);
-                });
-                
-                console.log('===============');
-            }
-            
-            exportLog() {
-                const logData = {
-                    exportTime: new Date().toISOString(),
-                    totalQuestions: this.gameLog.length,
-                    correctAnswers: this.gameLog.filter(log => log.isCorrect).length,
-                    accuracy: ((this.gameLog.filter(log => log.isCorrect).length / this.gameLog.length) * 100).toFixed(1),
-                    log: this.gameLog
+            checkSettingsChange() {
+                const currentSettings = {
+                    difficulty: document.getElementById('difficulty').value,
+                    octaveRange: `${document.getElementById('octaveStart').value}-${document.getElementById('octaveEnd').value}`,
+                    octaveIgnore: this.octaveIgnoreMode,
+                    timeBomb: this.timeBombMode,
+                    timeLimit: this.timeLimit,
+                    beginner: this.beginnerMode,
+                    loudness: this.loudnessCorrection,
+                    sequenceCount: document.getElementById('sequenceCount').value,
+                    chordCount: document.getElementById('chordCount').value,
+                    instruments: this.getSelectedInstruments().join(',')
                 };
                 
-                const dataStr = JSON.stringify(logData, null, 2);
-                const dataBlob = new Blob([dataStr], { type: 'application/json' });
-                const url = URL.createObjectURL(dataBlob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `piano-game-log-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
-                link.click();
-                URL.revokeObjectURL(url);
+                if (!this.lastSettings || JSON.stringify(this.lastSettings) !== JSON.stringify(currentSettings)) {
+                    const time = new Date().toLocaleTimeString('ja-JP');
+                    const settingsText = `難易度:${currentSettings.difficulty} オクターブ:${currentSettings.octaveRange} 楽器:${currentSettings.instruments} オプション:${currentSettings.octaveIgnore?'オクターブ無視 ':''}${currentSettings.timeBomb?`時限爆弾(${currentSettings.timeLimit}s) `:''}${currentSettings.beginner?'初心者 ':''}${currentSettings.loudness?'聴覚補正 ':''}`;
+                    
+                    const logEntry = {
+                        type: 'settings',
+                        text: `${time} [設定] ${settingsText}`
+                    };
+                    
+                    this.gameLog.push(logEntry);
+                    this.lastSettings = currentSettings;
+                    this.updateLogDisplay();
+                }
+            }
+            
+            noteToDisplayName(note) {
+                const noteName = note.slice(0, -1);
+                const octave = note.slice(-1);
+                if (this.octaveIgnoreMode) {
+                    return this.noteNames[noteName];
+                } else {
+                    return this.noteNames[noteName] + octave;
+                }
+            }
+            
+            updateLogDisplay() {
+                const logOutput = document.getElementById('logOutput');
+                const logText = this.gameLog.map(entry => entry.text).join('\n');
+                logOutput.value = logText;
+                logOutput.scrollTop = logOutput.scrollHeight;
+            }
+            
+            clearLog() {
+                this.gameLog = [];
+                this.lastSettings = null;
+                this.updateLogDisplay();
+            }
+            
+            outputStatistics() {
+                const questionLogs = this.gameLog.filter(entry => entry.type === 'question');
+                const totalQuestions = questionLogs.length;
+                const correctAnswers = questionLogs.filter(log => log.text.includes('○')).length;
+                const accuracy = totalQuestions > 0 ? ((correctAnswers / totalQuestions) * 100).toFixed(1) : '0.0';
+                const timeUpCount = questionLogs.filter(log => log.text.includes('⏰')).length;
+                
+                const time = new Date().toLocaleTimeString('ja-JP');
+                const statsText = `${time} [統計] ${totalQuestions}問中${correctAnswers}問正解 正答率${accuracy}% 時間切れ${timeUpCount}回`;
+                
+                const logEntry = {
+                    type: 'stats',
+                    text: statsText
+                };
+                
+                this.gameLog.push(logEntry);
+                this.updateLogDisplay();
             }
             
             speakNotes(notes) {
