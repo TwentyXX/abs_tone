@@ -553,10 +553,7 @@
             
             async initializeAudio() {
                 try {
-                    // Tone.jsを初期化
-                    await Tone.start();
-                    
-                    // 各楽器のシンセサイザーを初期化
+                    // 各楽器のシンセサイザーを初期化（Tone.startは後で呼ぶ）
                     this.instruments = {
                         'piano': new Tone.Synth({
                             oscillator: { type: 'sine' },
@@ -765,29 +762,43 @@
             
             async playNote(frequency, duration = 1.0, useCurrentInstrument = false) {
                 try {
+                    // Tone.jsが利用可能で楽器が指定されている場合
                     if (useCurrentInstrument && this.instruments && this.instruments[this.currentInstrument]) {
-                        // Tone.jsの楽器を使用
+                        // Tone.jsが開始されていることを確認
+                        if (Tone.context.state !== 'running') {
+                            await Tone.start();
+                        }
+                        
                         const note = this.frequencyToNote(frequency);
                         this.instruments[this.currentInstrument].triggerAttackRelease(note, duration);
-                    } else {
-                        // フォールバック: Web Audio API
-                        if (!this.audioContext) return;
-                        
-                        const oscillator = this.audioContext.createOscillator();
-                        const gainNode = this.audioContext.createGain();
-                        
-                        oscillator.connect(gainNode);
-                        gainNode.connect(this.audioContext.destination);
-                        
-                        oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
-                        oscillator.type = 'sine';
-                        
-                        gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
-                        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
-                        
-                        oscillator.start(this.audioContext.currentTime);
-                        oscillator.stop(this.audioContext.currentTime + duration);
+                        return;
                     }
+                    
+                    // フォールバック: Web Audio API
+                    if (!this.audioContext) {
+                        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    }
+                    
+                    // AudioContextが停止している場合は再開
+                    if (this.audioContext.state === 'suspended') {
+                        await this.audioContext.resume();
+                    }
+                    
+                    const oscillator = this.audioContext.createOscillator();
+                    const gainNode = this.audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(this.audioContext.destination);
+                    
+                    oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
+                    oscillator.type = 'sine';
+                    
+                    gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
+                    
+                    oscillator.start(this.audioContext.currentTime);
+                    oscillator.stop(this.audioContext.currentTime + duration);
+                    
                 } catch (error) {
                     console.error('Note playback failed:', error);
                 }
@@ -870,9 +881,19 @@
                 return question;
             }
             
-            startNewGame() {
-                if (!this.audioContext && !this.instruments) {
-                    this.initializeAudio();
+            async startNewGame() {
+                // Tone.jsを初期化（ユーザーインタラクション後に実行）
+                if (!this.instruments || Object.keys(this.instruments).length === 0) {
+                    await this.initializeAudio();
+                }
+                
+                // Tone.jsを開始（ユーザーインタラクション後に実行）
+                try {
+                    if (Tone.context.state !== 'running') {
+                        await Tone.start();
+                    }
+                } catch (error) {
+                    console.error('Tone.js start failed:', error);
                 }
                 
                 // ランダムな楽器を選択
@@ -1047,11 +1068,11 @@
                 }, 2000);
             }
             
-            handleKeyClick(note) {
+            async handleKeyClick(note) {
                 if (!this.gameActive || this.answered) return;
                 
-                // クリックした鍵盤の音を再生
-                this.playNote(this.noteToFrequency(note));
+                // クリックした鍵盤の音を再生（常にWeb Audio APIを使用）
+                await this.playNote(this.noteToFrequency(note), 1.0, false);
                 
                 // すべての難易度で選択をトグルする
                 this.toggleKeySelection(note);
