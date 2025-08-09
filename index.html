@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ピアノ音感ゲーム</title>
+    <script src="https://unpkg.com/tone@14.7.77/build/Tone.js"></script>
     <style>
         :root {
             --bg-color: #f0f0f0;
@@ -511,6 +512,23 @@
                 this.darkMode = false;
                 this.beginnerMode = false;
                 this.speechSynthesis = window.speechSynthesis;
+                this.currentInstrument = 'piano';
+                
+                // 楽器の定義（Tone.jsを使用）
+                this.instruments = {};
+                this.instrumentNames = ['piano', 'organ', 'guitar', 'violin', 'trumpet', 'flute', 'bell', 'synth'];
+                
+                // 楽器名の日本語マッピング
+                this.instrumentNameMap = {
+                    'piano': 'ピアノ',
+                    'organ': 'オルガン', 
+                    'guitar': 'ギター',
+                    'violin': 'バイオリン',
+                    'trumpet': 'トランペット',
+                    'flute': 'フルート',
+                    'bell': 'ベル',
+                    'synth': 'シンセサイザー'
+                };
                 
                 // 音名マッピング（日本式）- 鍵盤表示用
                 this.noteNames = {
@@ -535,9 +553,76 @@
             
             async initializeAudio() {
                 try {
-                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    // Tone.jsを初期化
+                    await Tone.start();
+                    
+                    // 各楽器のシンセサイザーを初期化
+                    this.instruments = {
+                        'piano': new Tone.Synth({
+                            oscillator: { type: 'sine' },
+                            envelope: { attack: 0.02, decay: 0.4, sustain: 0.2, release: 1.2 }
+                        }).toDestination(),
+                        
+                        'organ': new Tone.Synth({
+                            oscillator: { type: 'square' },
+                            envelope: { attack: 0.08, decay: 0.2, sustain: 0.6, release: 0.8 }
+                        }).toDestination(),
+                        
+                        'guitar': new Tone.PluckSynth({
+                            attackNoise: 1,
+                            dampening: 4000,
+                            resonance: 0.7
+                        }).toDestination(),
+                        
+                        'violin': new Tone.Synth({
+                            oscillator: { type: 'sawtooth' },
+                            envelope: { attack: 0.25, decay: 0.2, sustain: 0.8, release: 1.5 }
+                        }).toDestination(),
+                        
+                        'trumpet': new Tone.Synth({
+                            oscillator: { type: 'square' },
+                            envelope: { attack: 0.12, decay: 0.3, sustain: 0.7, release: 0.9 }
+                        }).toDestination(),
+                        
+                        'flute': new Tone.Synth({
+                            oscillator: { type: 'sine' },
+                            envelope: { attack: 0.15, decay: 0.3, sustain: 0.6, release: 1.0 }
+                        }).toDestination(),
+                        
+                        'bell': new Tone.MetalSynth({
+                            frequency: 200,
+                            envelope: { attack: 0.001, decay: 1.4, release: 0.2 },
+                            harmonicity: 5.1,
+                            modulationIndex: 32,
+                            resonance: 4000,
+                            octaves: 1.5
+                        }).toDestination(),
+                        
+                        'synth': new Tone.FMSynth({
+                            harmonicity: 3,
+                            modulationIndex: 10,
+                            detune: 0,
+                            oscillator: { type: 'sine' },
+                            envelope: { attack: 0.08, decay: 0.4, sustain: 0.3, release: 1.2 },
+                            modulation: { type: 'square' },
+                            modulationEnvelope: { attack: 0.5, decay: 0, sustain: 1, release: 0.5 }
+                        }).toDestination()
+                    };
+                    
+                    // 音量を調整
+                    this.instruments.piano.volume.value = -10;
+                    this.instruments.organ.volume.value = -15;
+                    this.instruments.guitar.volume.value = -12;
+                    this.instruments.violin.volume.value = -14;
+                    this.instruments.trumpet.volume.value = -16;
+                    this.instruments.flute.volume.value = -13;
+                    this.instruments.bell.volume.value = -18;
+                    this.instruments.synth.volume.value = -15;
+                    
                 } catch (error) {
-                    console.error('Audio context initialization failed:', error);
+                    console.error('Audio initialization failed:', error);
+                    // フォールバック用のWeb Audio API
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 }
             }
             
@@ -678,36 +763,61 @@
                 return A4 * Math.pow(semitoneRatio, currentNoteNumber - A4NoteNumber);
             }
             
-            async playNote(frequency, duration = 1.0) {
-                if (!this.audioContext) return;
+            async playNote(frequency, duration = 1.0, useCurrentInstrument = false) {
+                try {
+                    if (useCurrentInstrument && this.instruments && this.instruments[this.currentInstrument]) {
+                        // Tone.jsの楽器を使用
+                        const note = this.frequencyToNote(frequency);
+                        this.instruments[this.currentInstrument].triggerAttackRelease(note, duration);
+                    } else {
+                        // フォールバック: Web Audio API
+                        if (!this.audioContext) return;
+                        
+                        const oscillator = this.audioContext.createOscillator();
+                        const gainNode = this.audioContext.createGain();
+                        
+                        oscillator.connect(gainNode);
+                        gainNode.connect(this.audioContext.destination);
+                        
+                        oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
+                        oscillator.type = 'sine';
+                        
+                        gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
+                        
+                        oscillator.start(this.audioContext.currentTime);
+                        oscillator.stop(this.audioContext.currentTime + duration);
+                    }
+                } catch (error) {
+                    console.error('Note playback failed:', error);
+                }
+            }
+            
+            frequencyToNote(frequency) {
+                const A4 = 440;
+                const C0 = A4 * Math.pow(2, -4.75);
+                const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
                 
-                const oscillator = this.audioContext.createOscillator();
-                const gainNode = this.audioContext.createGain();
-                
-                oscillator.connect(gainNode);
-                gainNode.connect(this.audioContext.destination);
-                
-                oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
-                oscillator.type = 'sine';
-                
-                gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
-                
-                oscillator.start(this.audioContext.currentTime);
-                oscillator.stop(this.audioContext.currentTime + duration);
+                if (frequency > C0) {
+                    const h = Math.round(12 * Math.log2(frequency / C0));
+                    const octave = Math.floor(h / 12);
+                    const n = h % 12;
+                    return noteNames[n] + octave;
+                }
+                return 'C4';
             }
             
             async playSequence(notes, interval = 0.8) {
                 for (let i = 0; i < notes.length; i++) {
                     setTimeout(() => {
-                        this.playNote(this.noteToFrequency(notes[i]));
+                        this.playNote(this.noteToFrequency(notes[i]), 1.0, true);
                     }, i * interval * 1000);
                 }
             }
             
             async playChord(notes) {
                 notes.forEach(note => {
-                    this.playNote(this.noteToFrequency(note));
+                    this.playNote(this.noteToFrequency(note), 1.0, true);
                 });
             }
             
@@ -761,9 +871,12 @@
             }
             
             startNewGame() {
-                if (!this.audioContext) {
+                if (!this.audioContext && !this.instruments) {
                     this.initializeAudio();
                 }
+                
+                // ランダムな楽器を選択
+                this.currentInstrument = this.instrumentNames[Math.floor(Math.random() * this.instrumentNames.length)];
                 
                 this.currentQuestion = this.generateQuestion();
                 this.gameActive = true;
@@ -829,7 +942,7 @@
                 setTimeout(() => {
                     switch (this.currentQuestion.type) {
                         case 'single':
-                            this.playNote(this.noteToFrequency(this.currentQuestion.notes[0]));
+                            this.playNote(this.noteToFrequency(this.currentQuestion.notes[0]), 1.0, true);
                             break;
                         case 'sequence':
                             this.playSequence(this.currentQuestion.notes);
@@ -845,16 +958,18 @@
                 const questionEl = document.getElementById('question');
                 const difficulty = document.getElementById('difficulty').value;
                 
+                const instrumentName = this.instrumentNameMap[this.currentInstrument] || this.currentInstrument;
+                
                 let baseText = '';
                 switch (difficulty) {
                     case 'single':
-                        baseText = '単音を聞いて、該当する鍵盤をクリックし、スペースキーで答え合わせしてください';
+                        baseText = `${instrumentName}の単音を聞いて、該当する鍵盤をクリックし、スペースキーで答え合わせしてください`;
                         break;
                     case 'sequence':
-                        baseText = '連音を聞いて、順番に鍵盤をクリックし、スペースキーで答え合わせしてください';
+                        baseText = `${instrumentName}の連音を聞いて、順番に鍵盤をクリックし、スペースキーで答え合わせしてください`;
                         break;
                     case 'chord':
-                        baseText = '和音を聞いて、該当する鍵盤をすべてクリックし、スペースキーで答え合わせしてください';
+                        baseText = `${instrumentName}の和音を聞いて、該当する鍵盤をすべてクリックし、スペースキーで答え合わせしてください`;
                         break;
                 }
                 
