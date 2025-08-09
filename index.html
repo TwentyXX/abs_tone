@@ -537,8 +537,11 @@
             </div>
             
             <div style="margin-top: 20px;">
-                <label for="logOutput" style="font-weight: bold;">ゲームログ:</label>
-                <textarea id="logOutput" readonly style="width: 100%; height: 200px; font-family: monospace; font-size: 12px; margin-top: 5px; padding: 10px; border: 1px solid var(--border-color); background: var(--container-bg); color: var(--text-color);"></textarea>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                    <label for="logOutput" style="font-weight: bold;">ゲームログ:</label>
+                    <button onclick="game.copyLog()" style="padding: 4px 8px; font-size: 12px; margin: 0;">コピー</button>
+                </div>
+                <textarea id="logOutput" readonly style="width: 100%; height: 200px; font-family: monospace; font-size: 12px; padding: 10px; border: 1px solid var(--border-color); background: var(--container-bg); color: var(--text-color);"></textarea>
             </div>
             
             <div class="result" id="result"></div>
@@ -1634,6 +1637,29 @@
                 this.gameLog = [];
                 this.lastSettings = null;
                 this.updateLogDisplay();
+            }
+            
+            copyLog() {
+                const logOutput = document.getElementById('logOutput');
+                logOutput.select();
+                logOutput.setSelectionRange(0, 99999); // モバイル対応
+                
+                try {
+                    document.execCommand('copy');
+                    // 一時的にボタンのテキストを変更してフィードバック
+                    const copyButton = event.target;
+                    const originalText = copyButton.textContent;
+                    copyButton.textContent = 'コピー完了!';
+                    copyButton.style.background = '#27ae60';
+                    
+                    setTimeout(() => {
+                        copyButton.textContent = originalText;
+                        copyButton.style.background = '';
+                    }, 1000);
+                } catch (err) {
+                    console.error('コピーに失敗しました:', err);
+                    alert('コピーに失敗しました。手動でテキストを選択してコピーしてください。');
+                }
             }
             
             outputStatistics() {
