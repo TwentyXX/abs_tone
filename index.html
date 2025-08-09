@@ -615,15 +615,16 @@
                         }).toDestination()
                     };
                     
-                    // 音量を調整
-                    this.instruments.piano.volume.value = -10;
-                    this.instruments.organ.volume.value = -15;
-                    this.instruments.guitar.volume.value = -12;
-                    this.instruments.violin.volume.value = -14;
-                    this.instruments.trumpet.volume.value = -16;
-                    this.instruments.flute.volume.value = -13;
-                    this.instruments.bell.volume.value = -18;
-                    this.instruments.synth.volume.value = -15;
+                    // 聴覚特性に基づいた音量調整
+                    // 高音域が多い楽器は音量を下げ、低音域が豊富な楽器は音量を上げる
+                    this.instruments.piano.volume.value = -8;   // バランスの良い楽器なので標準
+                    this.instruments.organ.volume.value = -10;  // 低音域が豊富なので少し上げる
+                    this.instruments.guitar.volume.value = -9;  // 中音域中心なので標準的
+                    this.instruments.violin.volume.value = -18; // 高音域が刺激的なので大幅に下げる
+                    this.instruments.trumpet.volume.value = -20; // 高音域が非常に刺激的なので最も下げる
+                    this.instruments.flute.volume.value = -16;  // 高音域が多いので下げる
+                    this.instruments.bell.volume.value = -22;   // 高周波成分が多いので最も下げる
+                    this.instruments.synth.volume.value = -12;  // 設定可能なので中程度
                     
                 } catch (error) {
                     console.error('Audio initialization failed:', error);
