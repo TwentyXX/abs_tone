@@ -1746,8 +1746,16 @@
                 let availableNotes = [];
                 
                 if (this.noteSelectionMode && this.selectedNotes.size > 0) {
-                    // 音名選択モードの場合、選択された音のみを使用
-                    availableNotes = Array.from(this.selectedNotes);
+                    // 音名選択モードの場合、選択された音名を設定されたオクターブ範囲に展開
+                    const selectedBaseNotes = Array.from(this.selectedNotes).map(note => note.slice(0, -1));
+                    const uniqueBaseNotes = [...new Set(selectedBaseNotes)]; // 重複を除去
+                    
+                    for (let octave = octaveStart; octave <= octaveEnd; octave++) {
+                        uniqueBaseNotes.forEach(baseNote => {
+                            availableNotes.push(baseNote + octave);
+                        });
+                    }
+                    console.log('Using selected note names across octave range:', uniqueBaseNotes, 'in octaves', octaveStart, 'to', octaveEnd);
                 } else {
                     // 通常モードの場合、オクターブ範囲内の全ての音を使用
                     const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -1756,6 +1764,7 @@
                             availableNotes.push(note + octave);
                         });
                     }
+                    console.log('Using all notes in range:', availableNotes.length, 'notes');
                 }
                 
                 if (availableNotes.length === 0) {
