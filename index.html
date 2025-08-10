@@ -1348,6 +1348,7 @@
                     key.dataset.baseNote = note;
                     key.setAttribute('data-base-note', note);
                     key.dataset.frequency = this.noteToFrequency(note + octave);
+                    key.dataset.keyType = 'answer'; // 回答用であることを明示
                     key.style.left = (whiteKeyIndex * keyWidth) + 'px';
                     
                     const label = document.createElement('div');
@@ -1355,7 +1356,11 @@
                     label.textContent = this.noteNames[note];
                     key.appendChild(label);
                     
-                    key.addEventListener('click', () => this.handleKeyClick(note + octave));
+                    // 回答専用のクリックハンドラー
+                    key.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.handleKeyClick(note + octave);
+                    });
                     piano.appendChild(key);
                     
                     // 黒鍵を追加
@@ -1367,6 +1372,7 @@
                         blackKey.dataset.baseNote = blackNote;
                         blackKey.setAttribute('data-base-note', blackNote);
                         blackKey.dataset.frequency = this.noteToFrequency(blackNote + octave);
+                        blackKey.dataset.keyType = 'answer'; // 回答用であることを明示
                         blackKey.style.left = (whiteKeyIndex * keyWidth + blackKeyOffset) + 'px';
                         
                         const blackLabel = document.createElement('div');
@@ -1374,7 +1380,11 @@
                         blackLabel.textContent = this.noteNames[blackNote];
                         blackKey.appendChild(blackLabel);
                         
-                        blackKey.addEventListener('click', () => this.handleKeyClick(blackNote + octave));
+                        // 回答専用のクリックハンドラー
+                        blackKey.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            this.handleKeyClick(blackNote + octave);
+                        });
                         piano.appendChild(blackKey);
                     }
                     
@@ -1399,6 +1409,7 @@
                         key.dataset.note = note + octave;
                         key.dataset.baseNote = note;
                         key.dataset.frequency = this.noteToFrequency(note + octave);
+                        key.dataset.keyType = 'answer'; // 回答用であることを明示
                         key.style.left = (whiteKeyIndex * keyWidth) + 'px';
                         
                         const label = document.createElement('div');
@@ -1406,7 +1417,11 @@
                         label.textContent = this.noteNames[note] + octave;
                         key.appendChild(label);
                         
-                        key.addEventListener('click', () => this.handleKeyClick(note + octave));
+                        // 回答専用のクリックハンドラー
+                        key.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            this.handleKeyClick(note + octave);
+                        });
                         piano.appendChild(key);
                         
                         // 黒鍵を追加
@@ -1417,6 +1432,7 @@
                             blackKey.dataset.note = blackNote + octave;
                             blackKey.dataset.baseNote = blackNote;
                             blackKey.dataset.frequency = this.noteToFrequency(blackNote + octave);
+                            blackKey.dataset.keyType = 'answer'; // 回答用であることを明示
                             blackKey.style.left = (whiteKeyIndex * keyWidth + blackKeyOffset) + 'px';
                             
                             const blackLabel = document.createElement('div');
@@ -1424,7 +1440,11 @@
                             blackLabel.textContent = this.noteNames[blackNote] + octave;
                             blackKey.appendChild(blackLabel);
                             
-                            blackKey.addEventListener('click', () => this.handleKeyClick(blackNote + octave));
+                            // 回答専用のクリックハンドラー
+                            blackKey.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                this.handleKeyClick(blackNote + octave);
+                            });
                             piano.appendChild(blackKey);
                         }
                         
@@ -1989,7 +2009,8 @@
             }
             
             updateCheckAnswerButton() {
-                const selectedKeys = document.querySelectorAll('.selected');
+                // 回答用の鍵盤で選択されたキーのみをカウント
+                const selectedKeys = document.querySelectorAll('[data-key-type="answer"].selected');
                 const checkAnswerBtn = document.getElementById('checkAnswer');
                 checkAnswerBtn.disabled = selectedKeys.length === 0;
             }
@@ -2014,7 +2035,8 @@
                     this.stopTimer();
                 }
                 
-                const selectedKeys = document.querySelectorAll('.selected');
+                // 回答用の鍵盤で選択されたキーのみを取得
+                const selectedKeys = document.querySelectorAll('[data-key-type="answer"].selected');
                 const selectedNotes = Array.from(selectedKeys).map(key => key.dataset.note);
                 const correctNotes = this.currentQuestion.notes;
                 
@@ -2081,15 +2103,15 @@
                 this.clearKeyHighlights();
                 
                 if (this.octaveIgnoreMode) {
-                    // オクターブ無視モードでは音名のみでハイライト
+                    // オクターブ無視モードでは音名のみでハイライト（回答用鍵盤のみ）
                     const correctBaseNotes = correctNotes.map(note => note.slice(0, -1));
                     correctBaseNotes.forEach(baseNote => {
-                        const key = document.querySelector(`[data-base-note="${baseNote}"]`);
+                        const key = document.querySelector(`[data-base-note="${baseNote}"][data-key-type="answer"]`);
                         if (key) key.classList.add('correct');
                     });
                     
-                    // 間違った選択をハイライト
-                    const selectedKeys = document.querySelectorAll('.selected');
+                    // 間違った選択をハイライト（回答用鍵盤のみ）
+                    const selectedKeys = document.querySelectorAll('[data-key-type="answer"].selected');
                     selectedKeys.forEach(key => {
                         const selectedBaseNote = key.dataset.baseNote;
                         if (!correctBaseNotes.includes(selectedBaseNote)) {
@@ -2097,16 +2119,16 @@
                         }
                     });
                 } else {
-                    // 通常モードでは完全一致でハイライト
+                    // 通常モードでは完全一致でハイライト（回答用鍵盤のみ）
                     correctNotes.forEach(note => {
-                        const key = document.querySelector(`[data-note="${note}"]`);
+                        const key = document.querySelector(`[data-note="${note}"][data-key-type="answer"]`);
                         if (key) key.classList.add('correct');
                     });
                     
-                    // 間違った選択をハイライト
+                    // 間違った選択をハイライト（回答用鍵盤のみ）
                     selectedNotes.forEach(note => {
                         if (!correctNotes.includes(note)) {
-                            const key = document.querySelector(`[data-note="${note}"]`);
+                            const key = document.querySelector(`[data-note="${note}"][data-key-type="answer"]`);
                             if (key) key.classList.add('wrong');
                         }
                     });
@@ -2177,7 +2199,8 @@
             }
             
             clearKeyHighlights() {
-                const keys = document.querySelectorAll('.white-key, .black-key');
+                // 回答用の鍵盤のみをクリア
+                const keys = document.querySelectorAll('[data-key-type="answer"]');
                 keys.forEach(key => {
                     key.classList.remove('correct', 'wrong', 'selected');
                 });
