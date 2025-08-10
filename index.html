@@ -1201,7 +1201,7 @@
                 if (!this.audioContext || !this.instrumentConfigs[instrumentName]) return;
                 
                 const config = this.instrumentConfigs[instrumentName];
-                const now = this.audioContext.currentTime;
+                const now = Math.max(0, this.audioContext.currentTime); // 負の値を防ぐ
                 
                 // 複数のオシレーターで倍音を作成
                 const oscillators = [];
@@ -1240,12 +1240,17 @@
                         const correctionFactor = this.calculateLoudnessCorrection(frequency * (index + 1));
                         const adjustedAmplitude = amplitude * correctionFactor * this.getInstrumentVolumeMultiplier(instrumentName);
                         
-                        // ADSRエンベロープ
+                        // ADSRエンベロープ（時間値の安全性チェック）
+                        const attackTime = Math.max(now + 0.001, now + config.attack);
+                        const decayTime = Math.max(attackTime + 0.001, now + config.attack + config.decay);
+                        const releaseStartTime = Math.max(decayTime + 0.001, now + duration - config.release);
+                        const releaseEndTime = Math.max(releaseStartTime + 0.001, now + duration);
+                        
                         gainNode.gain.setValueAtTime(0, now);
-                        gainNode.gain.linearRampToValueAtTime(adjustedAmplitude, now + config.attack);
-                        gainNode.gain.exponentialRampToValueAtTime(adjustedAmplitude * config.sustain, now + config.attack + config.decay);
-                        gainNode.gain.setValueAtTime(adjustedAmplitude * config.sustain, now + duration - config.release);
-                        gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
+                        gainNode.gain.linearRampToValueAtTime(adjustedAmplitude, attackTime);
+                        gainNode.gain.exponentialRampToValueAtTime(Math.max(0.001, adjustedAmplitude * config.sustain), decayTime);
+                        gainNode.gain.setValueAtTime(Math.max(0.001, adjustedAmplitude * config.sustain), releaseStartTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.001, releaseEndTime);
                         
                         oscillator.connect(gainNode);
                         
@@ -1258,7 +1263,7 @@
                         }
                         
                         oscillator.start(now);
-                        oscillator.stop(now + duration);
+                        oscillator.stop(releaseEndTime);
                         
                         oscillators.push(oscillator);
                         gainNodes.push(gainNode);
@@ -1630,6 +1635,8 @@
                         await this.audioContext.resume();
                     }
                     
+                    const now = Math.max(0, this.audioContext.currentTime); // 負の値を防ぐ
+                    
                     if (useCurrentInstrument && this.instrumentConfigs[this.currentInstrument]) {
                         // カスタム楽器音を使用
                         this.createInstrumentSound(frequency, duration, this.currentInstrument);
@@ -1641,18 +1648,18 @@
                         oscillator.connect(gainNode);
                         gainNode.connect(this.audioContext.destination);
                         
-                        oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
+                        oscillator.frequency.setValueAtTime(frequency, now);
                         oscillator.type = 'sine';
                         
                         // 聴覚特性に合わせた音量補正を適用
                         const correctionFactor = this.calculateLoudnessCorrection(frequency);
                         const adjustedVolume = 0.3 * correctionFactor;
                         
-                        gainNode.gain.setValueAtTime(adjustedVolume, this.audioContext.currentTime);
-                        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
+                        gainNode.gain.setValueAtTime(adjustedVolume, now);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, now + duration);
                         
-                        oscillator.start(this.audioContext.currentTime);
-                        oscillator.stop(this.audioContext.currentTime + duration);
+                        oscillator.start(now);
+                        oscillator.stop(now + duration);
                     }
                     
                 } catch (error) {
