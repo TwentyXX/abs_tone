@@ -264,21 +264,80 @@
             bottom: 5px;
         }
         
-        .note-checkbox {
+        .note-selection-piano {
+            display: block;
+            margin: 10px auto;
+            position: relative;
+            height: 80px;
+            width: 441px; /* 7白鍵 * 63px = 441px */
+            overflow: visible;
+        }
+        
+        .note-selection-piano .white-key {
+            width: 60px;
+            height: 80px;
+            background: var(--white-key-bg);
+            border: 2px solid var(--white-key-border);
+            cursor: pointer;
             position: absolute;
-            top: 5px;
+            transition: all 0.2s ease;
+        }
+        
+        .note-selection-piano .white-key:hover {
+            background: #f0f0f0;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .note-selection-piano .white-key.selected {
+            background: #3498db !important;
+            border-color: #2980b9 !important;
+            transform: translateY(-2px);
+            box-shadow: 0 3px 6px rgba(52, 152, 219, 0.4);
+        }
+        
+        .note-selection-piano .black-key {
+            width: 35px;
+            height: 50px;
+            background: var(--black-key-bg);
+            cursor: pointer;
+            position: absolute;
+            z-index: 2;
+            transition: all 0.2s ease;
+        }
+        
+        .note-selection-piano .black-key:hover {
+            background: #555;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .note-selection-piano .black-key.selected {
+            background: #3498db !important;
+            transform: translateY(-2px);
+            box-shadow: 0 3px 6px rgba(52, 152, 219, 0.4);
+        }
+        
+        .note-selection-piano .key-label {
+            position: absolute;
+            bottom: 5px;
             left: 50%;
             transform: translateX(-50%);
-            z-index: 3;
-            display: none;
+            font-size: 14px;
+            color: #666;
         }
         
-        .note-selection-mode .note-checkbox {
-            display: block;
+        .note-selection-piano .black-key .key-label {
+            color: var(--white-key-bg);
+            bottom: 3px;
         }
         
-        .black-key .note-checkbox {
-            top: 3px;
+        [data-theme="dark"] .note-selection-piano .white-key .key-label {
+            color: #222;
+        }
+        
+        [data-theme="dark"] .note-selection-piano .black-key .key-label {
+            color: #ddd;
         }
         
         [data-theme="dark"] .white-key .key-label {
@@ -528,6 +587,16 @@
                 <label>
                     <input type="checkbox" id="noteSelectionMode"> 出題音名選択モード
                 </label>
+            </div>
+            
+            <div id="noteSelectionPanel" style="display: none; margin-top: 15px; padding: 15px; border: 2px solid var(--border-color); border-radius: 8px; background: var(--container-bg);">
+                <div style="margin-bottom: 10px; font-weight: bold;">出題する音名を選択してください:</div>
+                <div id="noteSelectionPiano" class="note-selection-piano"></div>
+                <div style="margin-top: 10px; font-size: 12px; color: #666;">
+                    <button id="selectAllNotes" style="padding: 4px 8px; font-size: 12px; margin-right: 5px;">全選択</button>
+                    <button id="deselectAllNotes" style="padding: 4px 8px; font-size: 12px; margin-right: 5px;">全解除</button>
+                    <span>選択された音数: <span id="selectedNotesCount">0</span></span>
+                </div>
             </div>
             
             <div class="setting-group">
@@ -1286,17 +1355,6 @@
                     label.textContent = this.noteNames[note];
                     key.appendChild(label);
                     
-                    // チェックボックスを追加
-                    const checkbox = document.createElement('input');
-                    checkbox.type = 'checkbox';
-                    checkbox.className = 'note-checkbox';
-                    checkbox.checked = true; // デフォルトで全て選択
-                    checkbox.addEventListener('change', (e) => {
-                        e.stopPropagation();
-                        this.updateSelectedNotes();
-                    });
-                    key.appendChild(checkbox);
-                    
                     key.addEventListener('click', () => this.handleKeyClick(note + octave));
                     piano.appendChild(key);
                     
@@ -1315,17 +1373,6 @@
                         blackLabel.className = 'key-label';
                         blackLabel.textContent = this.noteNames[blackNote];
                         blackKey.appendChild(blackLabel);
-                        
-                        // チェックボックスを追加
-                        const blackCheckbox = document.createElement('input');
-                        blackCheckbox.type = 'checkbox';
-                        blackCheckbox.className = 'note-checkbox';
-                        blackCheckbox.checked = true; // デフォルトで全て選択
-                        blackCheckbox.addEventListener('change', (e) => {
-                            e.stopPropagation();
-                            this.updateSelectedNotes();
-                        });
-                        blackKey.appendChild(blackCheckbox);
                         
                         blackKey.addEventListener('click', () => this.handleKeyClick(blackNote + octave));
                         piano.appendChild(blackKey);
@@ -1359,17 +1406,6 @@
                         label.textContent = this.noteNames[note] + octave;
                         key.appendChild(label);
                         
-                        // チェックボックスを追加
-                        const checkbox = document.createElement('input');
-                        checkbox.type = 'checkbox';
-                        checkbox.className = 'note-checkbox';
-                        checkbox.checked = true; // デフォルトで全て選択
-                        checkbox.addEventListener('change', (e) => {
-                            e.stopPropagation();
-                            this.updateSelectedNotes();
-                        });
-                        key.appendChild(checkbox);
-                        
                         key.addEventListener('click', () => this.handleKeyClick(note + octave));
                         piano.appendChild(key);
                         
@@ -1387,17 +1423,6 @@
                             blackLabel.className = 'key-label';
                             blackLabel.textContent = this.noteNames[blackNote] + octave;
                             blackKey.appendChild(blackLabel);
-                            
-                            // チェックボックスを追加
-                            const blackCheckbox = document.createElement('input');
-                            blackCheckbox.type = 'checkbox';
-                            blackCheckbox.className = 'note-checkbox';
-                            blackCheckbox.checked = true; // デフォルトで全て選択
-                            blackCheckbox.addEventListener('change', (e) => {
-                                e.stopPropagation();
-                                this.updateSelectedNotes();
-                            });
-                            blackKey.appendChild(blackCheckbox);
                             
                             blackKey.addEventListener('click', () => this.handleKeyClick(blackNote + octave));
                             piano.appendChild(blackKey);
@@ -2309,11 +2334,12 @@
                         piano.classList.remove('octave-ignore');
                     }
                     
-                    // 音名選択モードのCSSクラスを適用
+                    // 音名選択パネルの表示状態を適用
+                    const noteSelectionPanel = document.getElementById('noteSelectionPanel');
+                    noteSelectionPanel.style.display = this.noteSelectionMode ? 'block' : 'none';
+                    
                     if (this.noteSelectionMode) {
-                        piano.classList.add('note-selection-mode');
-                    } else {
-                        piano.classList.remove('note-selection-mode');
+                        this.createNoteSelectionPiano();
                     }
                     
                     if (savedSettings.darkMode) {
@@ -2337,15 +2363,73 @@
                 }
             }
             
+            createNoteSelectionPiano() {
+                const noteSelectionPiano = document.getElementById('noteSelectionPiano');
+                noteSelectionPiano.innerHTML = '';
+                
+                const whiteKeys = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+                const blackKeys = ['C#', 'D#', null, 'F#', 'G#', 'A#', null];
+                const octave = 4; // 固定オクターブ
+                const keyWidth = 63;
+                const blackKeyOffset = 42;
+                
+                let whiteKeyIndex = 0;
+                
+                for (let i = 0; i < whiteKeys.length; i++) {
+                    const note = whiteKeys[i];
+                    const key = document.createElement('div');
+                    key.className = 'white-key selected'; // デフォルトで選択状態
+                    key.dataset.note = note + octave;
+                    key.dataset.baseNote = note;
+                    key.style.left = (whiteKeyIndex * keyWidth) + 'px';
+                    
+                    const label = document.createElement('div');
+                    label.className = 'key-label';
+                    label.textContent = this.noteNames[note];
+                    key.appendChild(label);
+                    
+                    key.addEventListener('click', () => {
+                        key.classList.toggle('selected');
+                        this.updateSelectedNotes();
+                    });
+                    
+                    noteSelectionPiano.appendChild(key);
+                    
+                    // 黒鍵を追加
+                    if (blackKeys[i]) {
+                        const blackNote = blackKeys[i];
+                        const blackKey = document.createElement('div');
+                        blackKey.className = 'black-key selected'; // デフォルトで選択状態
+                        blackKey.dataset.note = blackNote + octave;
+                        blackKey.dataset.baseNote = blackNote;
+                        blackKey.style.left = (whiteKeyIndex * keyWidth + blackKeyOffset) + 'px';
+                        
+                        const blackLabel = document.createElement('div');
+                        blackLabel.className = 'key-label';
+                        blackLabel.textContent = this.noteNames[blackNote];
+                        blackKey.appendChild(blackLabel);
+                        
+                        blackKey.addEventListener('click', () => {
+                            blackKey.classList.toggle('selected');
+                            this.updateSelectedNotes();
+                        });
+                        
+                        noteSelectionPiano.appendChild(blackKey);
+                    }
+                    
+                    whiteKeyIndex++;
+                }
+            }
+            
             updateSelectedNotes() {
                 this.selectedNotes.clear();
-                const checkboxes = document.querySelectorAll('.note-checkbox:checked');
-                checkboxes.forEach(checkbox => {
-                    const key = checkbox.closest('.white-key, .black-key');
-                    if (key) {
-                        this.selectedNotes.add(key.dataset.note);
-                    }
+                const selectedKeys = document.querySelectorAll('#noteSelectionPiano .selected');
+                selectedKeys.forEach(key => {
+                    this.selectedNotes.add(key.dataset.note);
                 });
+                
+                // 選択数を更新
+                document.getElementById('selectedNotesCount').textContent = this.selectedNotes.size;
                 
                 // 設定を保存
                 this.saveSettingsToCookies();
@@ -2651,14 +2735,26 @@
                 
                 document.getElementById('noteSelectionMode').addEventListener('change', (e) => {
                     this.noteSelectionMode = e.target.checked;
-                    const piano = document.getElementById('piano');
+                    const noteSelectionPanel = document.getElementById('noteSelectionPanel');
+                    noteSelectionPanel.style.display = e.target.checked ? 'block' : 'none';
+                    
                     if (e.target.checked) {
-                        piano.classList.add('note-selection-mode');
-                    } else {
-                        piano.classList.remove('note-selection-mode');
+                        this.createNoteSelectionPiano();
+                        this.updateSelectedNotes();
                     }
-                    this.updateSelectedNotes();
                     this.saveSettingsToCookies();
+                });
+                
+                document.getElementById('selectAllNotes').addEventListener('click', () => {
+                    const keys = document.querySelectorAll('#noteSelectionPiano .white-key, #noteSelectionPiano .black-key');
+                    keys.forEach(key => key.classList.add('selected'));
+                    this.updateSelectedNotes();
+                });
+                
+                document.getElementById('deselectAllNotes').addEventListener('click', () => {
+                    const keys = document.querySelectorAll('#noteSelectionPiano .white-key, #noteSelectionPiano .black-key');
+                    keys.forEach(key => key.classList.remove('selected'));
+                    this.updateSelectedNotes();
                 });
                 
                 // 楽器選択のイベントリスナー
