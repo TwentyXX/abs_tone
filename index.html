@@ -2158,6 +2158,11 @@
                 if (this.correctSoundReviewEnabled) {
                     reviewButton.style.display = 'inline-block';
                     reviewButton.disabled = false;
+                    
+                    // 自動で正解音をおさらい再生
+                    setTimeout(() => {
+                        this.playCorrectSoundReview();
+                    }, 1000); // 1秒後に自動再生
                 } else {
                     reviewButton.style.display = 'none';
                 }
