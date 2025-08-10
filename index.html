@@ -476,6 +476,12 @@
             </div>
             
             <div class="setting-group">
+                <label>
+                    <input type="checkbox" id="answerSoundEnabled" checked> 回答時の音再生
+                </label>
+            </div>
+            
+            <div class="setting-group">
                 <label style="width: 100%; margin-bottom: 10px;">使用する楽器を選択:</label>
                 <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-left: 20px;">
                     <label style="min-width: auto;">
@@ -655,6 +661,7 @@
                 this.currentQuestionStartTime = null;
                 this.lastSettings = null;
                 this.previousQuestionNotes = []; // 前回の問題の音を記録
+                this.answerSoundEnabled = true; // 回答時の音再生設定
                 
                 // 楽器の定義（Tone.jsを使用）
                 this.instruments = {};
@@ -1817,8 +1824,10 @@
             async handleKeyClick(note) {
                 if (!this.gameActive || this.answered) return;
                 
-                // クリックした鍵盤の音を再生（常にWeb Audio APIを使用）
-                await this.playNote(this.noteToFrequency(note), 1.0, false);
+                // 回答音が有効な場合のみ音を再生
+                if (this.answerSoundEnabled) {
+                    await this.playNote(this.noteToFrequency(note), 1.0, false);
+                }
                 
                 // すべての難易度で選択をトグルする
                 this.toggleKeySelection(note);
@@ -2073,6 +2082,7 @@
                     darkMode: document.getElementById('darkMode').checked,
                     beginnerMode: document.getElementById('beginnerMode').checked,
                     loudnessCorrection: document.getElementById('loudnessCorrection').checked,
+                    answerSoundEnabled: document.getElementById('answerSoundEnabled').checked,
                     instruments: {}
                 };
                 
@@ -2117,6 +2127,7 @@
                     document.getElementById('darkMode').checked = savedSettings.darkMode || false;
                     document.getElementById('beginnerMode').checked = savedSettings.beginnerMode || false;
                     document.getElementById('loudnessCorrection').checked = savedSettings.loudnessCorrection !== false; // デフォルトtrue
+                    document.getElementById('answerSoundEnabled').checked = savedSettings.answerSoundEnabled !== false; // デフォルトtrue
                     
                     // 楽器選択状態を復元
                     if (savedSettings.instruments) {
@@ -2134,6 +2145,7 @@
                     this.octaveIgnoreMode = savedSettings.octaveIgnoreMode || false;
                     this.beginnerMode = savedSettings.beginnerMode || false;
                     this.loudnessCorrection = savedSettings.loudnessCorrection !== false;
+                    this.answerSoundEnabled = savedSettings.answerSoundEnabled !== false;
                     
                     // 設定表示を更新
                     document.getElementById('timeBombSettings').style.display = this.timeBombMode ? 'inline' : 'none';
@@ -2461,6 +2473,11 @@
                     this.saveSettingsToCookies();
                 });
                 
+                document.getElementById('answerSoundEnabled').addEventListener('change', (e) => {
+                    this.answerSoundEnabled = e.target.checked;
+                    this.saveSettingsToCookies();
+                });
+                
                 // 楽器選択のイベントリスナー
                 this.instrumentNames.forEach(instrument => {
                     document.getElementById(`instrument-${instrument}`).addEventListener('change', () => {
@@ -2522,7 +2539,7 @@
                         if (this.gameActive && !this.answered) {
                             this.handleKeyClick(fullNote);
                         } else {
-                            // ゲーム中でない場合は音を再生するだけ
+                            // ゲーム中でない場合は音を再生するだけ（回答音設定に関係なく再生）
                             this.playNote(this.noteToFrequency(fullNote), 1.0, false);
                         }
                     }
