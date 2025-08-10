@@ -1219,6 +1219,12 @@
                 const piano = document.getElementById('piano');
                 piano.innerHTML = '';
                 
+                // 音名表示用の要素を再作成
+                const noteDisplay = document.createElement('div');
+                noteDisplay.className = 'note-display';
+                noteDisplay.id = 'noteDisplay';
+                piano.appendChild(noteDisplay);
+                
                 const octaveIgnoreMode = document.getElementById('octaveIgnoreMode').checked;
                 
                 if (octaveIgnoreMode) {
@@ -2057,7 +2063,9 @@
             
             hideCorrectNotes() {
                 const noteDisplay = document.getElementById('noteDisplay');
-                noteDisplay.classList.remove('show');
+                if (noteDisplay) {
+                    noteDisplay.classList.remove('show');
+                }
             }
             
             clearKeyHighlights() {
