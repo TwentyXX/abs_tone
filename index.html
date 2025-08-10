@@ -2235,7 +2235,16 @@
                 
                 // 自動進行の場合はカウントダウンを表示
                 if (this.autoNext) {
-                    let countdown = this.autoNextDelay;
+                    // 正解音おさらいが有効な場合は待機時間を延長
+                    let actualDelay = this.autoNextDelay;
+                    if (this.correctSoundReviewEnabled) {
+                        // おさらい音の再生時間を考慮して延長（連音の場合は特に長く）
+                        const reviewDuration = this.currentQuestion.type === 'sequence' ? 
+                            this.currentQuestion.notes.length * 0.8 + 2 : 3; // 連音は音数×0.8秒+2秒、その他は3秒
+                        actualDelay = Math.max(this.autoNextDelay, reviewDuration);
+                    }
+                    
+                    let countdown = actualDelay;
                     resultText += `<br><small>次の問題まで ${countdown.toFixed(1)} 秒</small>`;
                     resultEl.innerHTML = resultText;
                     
@@ -2251,7 +2260,7 @@
                     
                     this.autoNextTimeout = setTimeout(() => {
                         this.startNewGame();
-                    }, this.autoNextDelay * 1000);
+                    }, actualDelay * 1000);
                 } else {
                     resultEl.innerHTML = resultText;
                 }
