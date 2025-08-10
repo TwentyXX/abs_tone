@@ -2256,6 +2256,7 @@
                     loudnessCorrection: document.getElementById('loudnessCorrection').checked,
                     answerSoundEnabled: document.getElementById('answerSoundEnabled').checked,
                     noteSelectionMode: document.getElementById('noteSelectionMode').checked,
+                    selectedNotes: Array.from(this.selectedNotes), // 選択された音名を保存
                     instruments: {}
                 };
                 
@@ -2322,6 +2323,11 @@
                     this.answerSoundEnabled = savedSettings.answerSoundEnabled !== false;
                     this.noteSelectionMode = savedSettings.noteSelectionMode || false;
                     
+                    // 選択された音名を復元
+                    if (savedSettings.selectedNotes) {
+                        this.selectedNotes = new Set(savedSettings.selectedNotes);
+                    }
+                    
                     // 設定表示を更新
                     document.getElementById('timeBombSettings').style.display = this.timeBombMode ? 'inline' : 'none';
                     document.getElementById('autoNextSettings').style.display = this.autoNext ? 'inline' : 'none';
@@ -2377,9 +2383,13 @@
                 
                 for (let i = 0; i < whiteKeys.length; i++) {
                     const note = whiteKeys[i];
+                    const fullNote = note + octave;
                     const key = document.createElement('div');
-                    key.className = 'white-key selected'; // デフォルトで選択状態
-                    key.dataset.note = note + octave;
+                    
+                    // 保存された選択状態を復元、なければデフォルトで選択状態
+                    const isSelected = this.selectedNotes.size === 0 || this.selectedNotes.has(fullNote);
+                    key.className = isSelected ? 'white-key selected' : 'white-key';
+                    key.dataset.note = fullNote;
                     key.dataset.baseNote = note;
                     key.style.left = (whiteKeyIndex * keyWidth) + 'px';
                     
@@ -2398,9 +2408,13 @@
                     // 黒鍵を追加
                     if (blackKeys[i]) {
                         const blackNote = blackKeys[i];
+                        const fullBlackNote = blackNote + octave;
                         const blackKey = document.createElement('div');
-                        blackKey.className = 'black-key selected'; // デフォルトで選択状態
-                        blackKey.dataset.note = blackNote + octave;
+                        
+                        // 保存された選択状態を復元、なければデフォルトで選択状態
+                        const isBlackSelected = this.selectedNotes.size === 0 || this.selectedNotes.has(fullBlackNote);
+                        blackKey.className = isBlackSelected ? 'black-key selected' : 'black-key';
+                        blackKey.dataset.note = fullBlackNote;
                         blackKey.dataset.baseNote = blackNote;
                         blackKey.style.left = (whiteKeyIndex * keyWidth + blackKeyOffset) + 'px';
                         
@@ -2419,6 +2433,9 @@
                     
                     whiteKeyIndex++;
                 }
+                
+                // 初回作成時に選択状態を更新
+                this.updateSelectedNotes();
             }
             
             updateSelectedNotes() {
