@@ -2016,11 +2016,19 @@
             }
             
             toggleKeySelection(note) {
-                const key = document.querySelector(`[data-note="${note}"]`);
+                // 回答用の鍵盤のみを対象とする
+                const key = document.querySelector(`[data-note="${note}"][data-key-type="answer"]`);
+                if (!key) {
+                    console.log(`Answer key not found for note: ${note}`);
+                    return;
+                }
+                
                 if (key.classList.contains('selected')) {
                     key.classList.remove('selected');
+                    console.log(`Deselected: ${note}`);
                 } else {
                     key.classList.add('selected');
+                    console.log(`Selected: ${note}`);
                 }
             }
             
@@ -2394,7 +2402,11 @@
             
             createNoteSelectionPiano() {
                 const noteSelectionPiano = document.getElementById('noteSelectionPiano');
-                noteSelectionPiano.innerHTML = '';
+                
+                // 既に作成済みの場合は何もしない
+                if (noteSelectionPiano.children.length > 0) {
+                    return;
+                }
                 
                 const whiteKeys = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
                 const blackKeys = ['C#', 'D#', null, 'F#', 'G#', 'A#', null];
@@ -2404,16 +2416,28 @@
                 
                 let whiteKeyIndex = 0;
                 
+                // 初回作成時で選択状態が空の場合のみ、デフォルト選択状態を設定
+                const isFirstTime = this.selectedNotes.size === 0;
+                
                 for (let i = 0; i < whiteKeys.length; i++) {
                     const note = whiteKeys[i];
                     const fullNote = note + octave;
                     const key = document.createElement('div');
                     
-                    // 保存された選択状態を復元、なければデフォルトで選択状態
-                    const isSelected = this.selectedNotes.size === 0 || this.selectedNotes.has(fullNote);
+                    // 選択状態を決定（出題音名選択用の鍵盤専用）
+                    let isSelected;
+                    if (isFirstTime) {
+                        // 初回はデフォルトで全選択
+                        isSelected = true;
+                    } else {
+                        // 保存された状態を復元
+                        isSelected = this.selectedNotes.has(fullNote);
+                    }
+                    
                     key.className = isSelected ? 'white-key selected' : 'white-key';
                     key.dataset.note = fullNote;
                     key.dataset.baseNote = note;
+                    key.dataset.keyType = 'selection'; // 出題音名選択用であることを明示
                     key.style.left = (whiteKeyIndex * keyWidth) + 'px';
                     
                     const label = document.createElement('div');
@@ -2421,7 +2445,9 @@
                     label.textContent = this.noteNames[note];
                     key.appendChild(label);
                     
-                    key.addEventListener('click', () => {
+                    // 出題音名選択専用のクリックハンドラー
+                    key.addEventListener('click', (e) => {
+                        e.stopPropagation();
                         key.classList.toggle('selected');
                         this.updateSelectedNotes();
                     });
@@ -2434,11 +2460,20 @@
                         const fullBlackNote = blackNote + octave;
                         const blackKey = document.createElement('div');
                         
-                        // 保存された選択状態を復元、なければデフォルトで選択状態
-                        const isBlackSelected = this.selectedNotes.size === 0 || this.selectedNotes.has(fullBlackNote);
+                        // 選択状態を決定
+                        let isBlackSelected;
+                        if (isFirstTime) {
+                            // 初回はデフォルトで全選択
+                            isBlackSelected = true;
+                        } else {
+                            // 保存された状態を復元
+                            isBlackSelected = this.selectedNotes.has(fullBlackNote);
+                        }
+                        
                         blackKey.className = isBlackSelected ? 'black-key selected' : 'black-key';
                         blackKey.dataset.note = fullBlackNote;
                         blackKey.dataset.baseNote = blackNote;
+                        blackKey.dataset.keyType = 'selection'; // 出題音名選択用であることを明示
                         blackKey.style.left = (whiteKeyIndex * keyWidth + blackKeyOffset) + 'px';
                         
                         const blackLabel = document.createElement('div');
@@ -2446,7 +2481,9 @@
                         blackLabel.textContent = this.noteNames[blackNote];
                         blackKey.appendChild(blackLabel);
                         
-                        blackKey.addEventListener('click', () => {
+                        // 出題音名選択専用のクリックハンドラー
+                        blackKey.addEventListener('click', (e) => {
+                            e.stopPropagation();
                             blackKey.classList.toggle('selected');
                             this.updateSelectedNotes();
                         });
@@ -2457,8 +2494,13 @@
                     whiteKeyIndex++;
                 }
                 
-                // 初回作成時に選択状態を更新
-                this.updateSelectedNotes();
+                // 初回作成時のみ選択状態を更新
+                if (isFirstTime) {
+                    this.updateSelectedNotes();
+                } else {
+                    // 既存の選択状態の場合は選択数のみ更新
+                    this.updateSelectedNotesCount();
+                }
             }
             
             updateSelectedNotes() {
@@ -2469,10 +2511,14 @@
                 });
                 
                 // 選択数を更新
-                document.getElementById('selectedNotesCount').textContent = this.selectedNotes.size;
+                this.updateSelectedNotesCount();
                 
                 // 設定を保存
                 this.saveSettingsToCookies();
+            }
+            
+            updateSelectedNotesCount() {
+                document.getElementById('selectedNotesCount').textContent = this.selectedNotes.size;
             }
             
             // データをクリア
