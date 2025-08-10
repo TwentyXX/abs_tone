@@ -1500,10 +1500,20 @@
                         candidateNote = availableNotes[Math.floor(Math.random() * availableNotes.length)];
                         isValidNote = true;
                         
-                        // 既に選択された全ての音と1オクターブ分以上離れているかチェック
+                        // 既に選択された全ての音との制約をチェック
                         for (const existingNote of selectedNotes) {
                             const semitoneDistance = this.calculateSemitoneDistance(existingNote, candidateNote);
-                            if (semitoneDistance < 12) { // 1オクターブ = 12半音
+                            const candidateNoteName = candidateNote.slice(0, -1);
+                            const existingNoteName = existingNote.slice(0, -1);
+                            
+                            // 1オクターブ分以上離れているかチェック
+                            if (semitoneDistance < 12) {
+                                isValidNote = false;
+                                break;
+                            }
+                            
+                            // 同じ音名（異なるオクターブ）でないかチェック
+                            if (candidateNoteName === existingNoteName) {
                                 isValidNote = false;
                                 break;
                             }
@@ -1517,16 +1527,31 @@
                         // 条件を満たす音が見つからない場合は、可能な限り離れた音を選択
                         let bestNote = availableNotes[0];
                         let maxMinDistance = 0;
+                        let bestHasSameNoteName = true;
                         
                         for (const candidate of availableNotes) {
                             let minDistance = Infinity;
+                            let hasSameNoteName = false;
+                            
                             for (const existing of selectedNotes) {
                                 const distance = this.calculateSemitoneDistance(existing, candidate);
+                                const candidateNoteName = candidate.slice(0, -1);
+                                const existingNoteName = existing.slice(0, -1);
+                                
                                 minDistance = Math.min(minDistance, distance);
+                                
+                                // 同じ音名の場合はフラグを立てる
+                                if (candidateNoteName === existingNoteName) {
+                                    hasSameNoteName = true;
+                                }
                             }
-                            if (minDistance > maxMinDistance) {
+                            
+                            // 同じ音名でない音を優先し、その中で最も離れた音を選択
+                            if ((!hasSameNoteName && bestHasSameNoteName) || 
+                                (!hasSameNoteName && !bestHasSameNoteName && minDistance > maxMinDistance)) {
                                 maxMinDistance = minDistance;
                                 bestNote = candidate;
+                                bestHasSameNoteName = hasSameNoteName;
                             }
                         }
                         selectedNotes.push(bestNote);
