@@ -2770,6 +2770,17 @@
                     this.speechSynthesis.cancel();
                 }
                 
+                // 時限爆弾モードのタイマーを停止
+                if (this.timeBombMode) {
+                    this.stopTimer();
+                }
+                
+                // 自動進行のタイムアウトをクリア
+                if (this.autoNextTimeout) {
+                    clearTimeout(this.autoNextTimeout);
+                    this.autoNextTimeout = null;
+                }
+                
                 console.log('すべての音を停止しました');
             }
             
