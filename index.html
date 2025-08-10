@@ -585,6 +585,12 @@
             
             <div class="setting-group">
                 <label>
+                    <input type="checkbox" id="correctSoundReviewEnabled" checked> 正解音おさらい機能
+                </label>
+            </div>
+            
+            <div class="setting-group">
+                <label>
                     <input type="checkbox" id="noteSelectionMode"> 出題音名選択モード
                 </label>
             </div>
@@ -733,6 +739,7 @@
                 <button id="playAgain" disabled>もう一度再生</button>
                 <button id="stopSound" disabled style="background: #f39c12;">出題ストップ</button>
                 <button id="checkAnswer" disabled>答え合わせ (スペースキー)</button>
+                <button id="reviewCorrectSound" disabled style="background: #9b59b6; display: none;">正解音おさらい</button>
                 <button id="nextQuestion" disabled>次の問題</button>
                 <button id="clearLog" onclick="game.clearLog()">ログクリア</button>
                 <button id="clearAllData" onclick="game.clearAllData()" style="background: #e74c3c;">全データクリア</button>
@@ -782,6 +789,7 @@
                 this.lastSettings = null;
                 this.previousQuestionNotes = []; // 前回の問題の音を記録
                 this.answerSoundEnabled = true; // 回答時の音再生設定
+                this.correctSoundReviewEnabled = true; // 正解音おさらい機能
                 this.noteSelectionMode = false; // 出題音名選択モード
                 this.selectedNotes = new Set(); // 選択された音名
                 this.activeOscillators = []; // アクティブなオシレーターを追跡
@@ -1883,6 +1891,7 @@
                 document.getElementById('stopSound').disabled = false;
                 document.getElementById('checkAnswer').disabled = true;
                 document.getElementById('nextQuestion').disabled = true;
+                document.getElementById('reviewCorrectSound').style.display = 'none';
                 
                 // タイマーをリセット
                 this.stopTimer();
@@ -2141,6 +2150,15 @@
                 document.getElementById('checkAnswer').disabled = true;
                 document.getElementById('stopSound').disabled = true;
                 document.getElementById('nextQuestion').disabled = false;
+                
+                // 正解音おさらいボタンの表示制御
+                const reviewButton = document.getElementById('reviewCorrectSound');
+                if (this.correctSoundReviewEnabled) {
+                    reviewButton.style.display = 'inline-block';
+                    reviewButton.disabled = false;
+                } else {
+                    reviewButton.style.display = 'none';
+                }
             }
             
             showResult(isCorrect, correctNotes, selectedNotes) {
@@ -2332,6 +2350,7 @@
                     beginnerMode: document.getElementById('beginnerMode').checked,
                     loudnessCorrection: document.getElementById('loudnessCorrection').checked,
                     answerSoundEnabled: document.getElementById('answerSoundEnabled').checked,
+                    correctSoundReviewEnabled: document.getElementById('correctSoundReviewEnabled').checked,
                     noteSelectionMode: document.getElementById('noteSelectionMode').checked,
                     selectedNotes: Array.from(this.selectedNotes), // 選択された音名を保存
                     instruments: {}
@@ -2379,6 +2398,7 @@
                     document.getElementById('beginnerMode').checked = savedSettings.beginnerMode || false;
                     document.getElementById('loudnessCorrection').checked = savedSettings.loudnessCorrection !== false; // デフォルトtrue
                     document.getElementById('answerSoundEnabled').checked = savedSettings.answerSoundEnabled !== false; // デフォルトtrue
+                    document.getElementById('correctSoundReviewEnabled').checked = savedSettings.correctSoundReviewEnabled !== false; // デフォルトtrue
                     document.getElementById('noteSelectionMode').checked = savedSettings.noteSelectionMode || false;
                     
                     // 楽器選択状態を復元
@@ -2398,6 +2418,7 @@
                     this.beginnerMode = savedSettings.beginnerMode || false;
                     this.loudnessCorrection = savedSettings.loudnessCorrection !== false;
                     this.answerSoundEnabled = savedSettings.answerSoundEnabled !== false;
+                    this.correctSoundReviewEnabled = savedSettings.correctSoundReviewEnabled !== false;
                     this.noteSelectionMode = savedSettings.noteSelectionMode || false;
                     
                     // 選択された音名を復元
@@ -2797,6 +2818,31 @@
                 this.sequenceTimeouts = [];
             }
             
+            playCorrectSoundReview() {
+                if (!this.currentQuestion || !this.answered) return;
+                
+                console.log('正解音おさらい再生:', this.currentQuestion.notes);
+                
+                switch (this.currentQuestion.type) {
+                    case 'single':
+                        this.playNote(this.noteToFrequency(this.currentQuestion.notes[0]), 1.0, true);
+                        break;
+                    case 'sequence':
+                        this.playSequence(this.currentQuestion.notes);
+                        break;
+                    case 'chord':
+                        this.playChord(this.currentQuestion.notes);
+                        break;
+                }
+                
+                // 初心者モードの場合は音名も読み上げ
+                if (this.beginnerMode) {
+                    setTimeout(() => {
+                        this.speakNotes(this.currentQuestion.notes);
+                    }, 100);
+                }
+            }
+            
             speakNotes(notes) {
                 if (!this.beginnerMode || !this.speechSynthesis) return;
                 
@@ -2917,6 +2963,11 @@
                     this.saveSettingsToCookies();
                 });
                 
+                document.getElementById('correctSoundReviewEnabled').addEventListener('change', (e) => {
+                    this.correctSoundReviewEnabled = e.target.checked;
+                    this.saveSettingsToCookies();
+                });
+                
                 document.getElementById('noteSelectionMode').addEventListener('change', (e) => {
                     this.noteSelectionMode = e.target.checked;
                     const noteSelectionPanel = document.getElementById('noteSelectionPanel');
@@ -2967,6 +3018,10 @@
                 
                 document.getElementById('stopSound').addEventListener('click', () => {
                     this.stopAllSounds();
+                });
+                
+                document.getElementById('reviewCorrectSound').addEventListener('click', () => {
+                    this.playCorrectSoundReview();
                 });
                 
                 // キーボードイベント
