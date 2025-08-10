@@ -264,6 +264,23 @@
             bottom: 5px;
         }
         
+        .note-checkbox {
+            position: absolute;
+            top: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 3;
+            display: none;
+        }
+        
+        .note-selection-mode .note-checkbox {
+            display: block;
+        }
+        
+        .black-key .note-checkbox {
+            top: 3px;
+        }
+        
         [data-theme="dark"] .white-key .key-label {
             color: #222;
         }
@@ -508,6 +525,12 @@
             </div>
             
             <div class="setting-group">
+                <label>
+                    <input type="checkbox" id="noteSelectionMode"> 出題音名選択モード
+                </label>
+            </div>
+            
+            <div class="setting-group">
                 <label style="width: 100%; margin-bottom: 10px;">使用する楽器を選択:</label>
                 <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-left: 20px;">
                     <label style="min-width: auto;">
@@ -689,6 +712,8 @@
                 this.lastSettings = null;
                 this.previousQuestionNotes = []; // 前回の問題の音を記録
                 this.answerSoundEnabled = true; // 回答時の音再生設定
+                this.noteSelectionMode = false; // 出題音名選択モード
+                this.selectedNotes = new Set(); // 選択された音名
                 
                 // 楽器の定義（Tone.jsを使用）
                 this.instruments = {};
@@ -1261,6 +1286,17 @@
                     label.textContent = this.noteNames[note];
                     key.appendChild(label);
                     
+                    // チェックボックスを追加
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.className = 'note-checkbox';
+                    checkbox.checked = true; // デフォルトで全て選択
+                    checkbox.addEventListener('change', (e) => {
+                        e.stopPropagation();
+                        this.updateSelectedNotes();
+                    });
+                    key.appendChild(checkbox);
+                    
                     key.addEventListener('click', () => this.handleKeyClick(note + octave));
                     piano.appendChild(key);
                     
@@ -1279,6 +1315,17 @@
                         blackLabel.className = 'key-label';
                         blackLabel.textContent = this.noteNames[blackNote];
                         blackKey.appendChild(blackLabel);
+                        
+                        // チェックボックスを追加
+                        const blackCheckbox = document.createElement('input');
+                        blackCheckbox.type = 'checkbox';
+                        blackCheckbox.className = 'note-checkbox';
+                        blackCheckbox.checked = true; // デフォルトで全て選択
+                        blackCheckbox.addEventListener('change', (e) => {
+                            e.stopPropagation();
+                            this.updateSelectedNotes();
+                        });
+                        blackKey.appendChild(blackCheckbox);
                         
                         blackKey.addEventListener('click', () => this.handleKeyClick(blackNote + octave));
                         piano.appendChild(blackKey);
@@ -1312,6 +1359,17 @@
                         label.textContent = this.noteNames[note] + octave;
                         key.appendChild(label);
                         
+                        // チェックボックスを追加
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.className = 'note-checkbox';
+                        checkbox.checked = true; // デフォルトで全て選択
+                        checkbox.addEventListener('change', (e) => {
+                            e.stopPropagation();
+                            this.updateSelectedNotes();
+                        });
+                        key.appendChild(checkbox);
+                        
                         key.addEventListener('click', () => this.handleKeyClick(note + octave));
                         piano.appendChild(key);
                         
@@ -1329,6 +1387,17 @@
                             blackLabel.className = 'key-label';
                             blackLabel.textContent = this.noteNames[blackNote] + octave;
                             blackKey.appendChild(blackLabel);
+                            
+                            // チェックボックスを追加
+                            const blackCheckbox = document.createElement('input');
+                            blackCheckbox.type = 'checkbox';
+                            blackCheckbox.className = 'note-checkbox';
+                            blackCheckbox.checked = true; // デフォルトで全て選択
+                            blackCheckbox.addEventListener('change', (e) => {
+                                e.stopPropagation();
+                                this.updateSelectedNotes();
+                            });
+                            blackKey.appendChild(blackCheckbox);
                             
                             blackKey.addEventListener('click', () => this.handleKeyClick(blackNote + octave));
                             piano.appendChild(blackKey);
@@ -1622,13 +1691,24 @@
                 const octaveStart = parseInt(document.getElementById('octaveStart').value);
                 const octaveEnd = parseInt(document.getElementById('octaveEnd').value);
                 
-                const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-                const availableNotes = [];
+                let availableNotes = [];
                 
-                for (let octave = octaveStart; octave <= octaveEnd; octave++) {
-                    notes.forEach(note => {
-                        availableNotes.push(note + octave);
-                    });
+                if (this.noteSelectionMode && this.selectedNotes.size > 0) {
+                    // 音名選択モードの場合、選択された音のみを使用
+                    availableNotes = Array.from(this.selectedNotes);
+                } else {
+                    // 通常モードの場合、オクターブ範囲内の全ての音を使用
+                    const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+                    for (let octave = octaveStart; octave <= octaveEnd; octave++) {
+                        notes.forEach(note => {
+                            availableNotes.push(note + octave);
+                        });
+                    }
+                }
+                
+                if (availableNotes.length === 0) {
+                    alert('出題可能な音が選択されていません。音名選択モードを確認してください。');
+                    return null;
                 }
                 
                 let question = {};
@@ -1679,6 +1759,9 @@
                 this.currentInstrument = availableInstruments[Math.floor(Math.random() * availableInstruments.length)];
                 
                 this.currentQuestion = this.generateQuestion();
+                if (!this.currentQuestion) {
+                    return; // 問題生成に失敗した場合は終了
+                }
                 this.gameActive = true;
                 this.answered = false;
                 this.currentQuestionStartTime = new Date();
@@ -2147,6 +2230,7 @@
                     beginnerMode: document.getElementById('beginnerMode').checked,
                     loudnessCorrection: document.getElementById('loudnessCorrection').checked,
                     answerSoundEnabled: document.getElementById('answerSoundEnabled').checked,
+                    noteSelectionMode: document.getElementById('noteSelectionMode').checked,
                     instruments: {}
                 };
                 
@@ -2192,6 +2276,7 @@
                     document.getElementById('beginnerMode').checked = savedSettings.beginnerMode || false;
                     document.getElementById('loudnessCorrection').checked = savedSettings.loudnessCorrection !== false; // デフォルトtrue
                     document.getElementById('answerSoundEnabled').checked = savedSettings.answerSoundEnabled !== false; // デフォルトtrue
+                    document.getElementById('noteSelectionMode').checked = savedSettings.noteSelectionMode || false;
                     
                     // 楽器選択状態を復元
                     if (savedSettings.instruments) {
@@ -2210,6 +2295,7 @@
                     this.beginnerMode = savedSettings.beginnerMode || false;
                     this.loudnessCorrection = savedSettings.loudnessCorrection !== false;
                     this.answerSoundEnabled = savedSettings.answerSoundEnabled !== false;
+                    this.noteSelectionMode = savedSettings.noteSelectionMode || false;
                     
                     // 設定表示を更新
                     document.getElementById('timeBombSettings').style.display = this.timeBombMode ? 'inline' : 'none';
@@ -2221,6 +2307,13 @@
                         piano.classList.add('octave-ignore');
                     } else {
                         piano.classList.remove('octave-ignore');
+                    }
+                    
+                    // 音名選択モードのCSSクラスを適用
+                    if (this.noteSelectionMode) {
+                        piano.classList.add('note-selection-mode');
+                    } else {
+                        piano.classList.remove('note-selection-mode');
                     }
                     
                     if (savedSettings.darkMode) {
@@ -2242,6 +2335,20 @@
                     // ログ表示を更新
                     this.updateLogDisplay();
                 }
+            }
+            
+            updateSelectedNotes() {
+                this.selectedNotes.clear();
+                const checkboxes = document.querySelectorAll('.note-checkbox:checked');
+                checkboxes.forEach(checkbox => {
+                    const key = checkbox.closest('.white-key, .black-key');
+                    if (key) {
+                        this.selectedNotes.add(key.dataset.note);
+                    }
+                });
+                
+                // 設定を保存
+                this.saveSettingsToCookies();
             }
             
             // データをクリア
@@ -2539,6 +2646,18 @@
                 
                 document.getElementById('answerSoundEnabled').addEventListener('change', (e) => {
                     this.answerSoundEnabled = e.target.checked;
+                    this.saveSettingsToCookies();
+                });
+                
+                document.getElementById('noteSelectionMode').addEventListener('change', (e) => {
+                    this.noteSelectionMode = e.target.checked;
+                    const piano = document.getElementById('piano');
+                    if (e.target.checked) {
+                        piano.classList.add('note-selection-mode');
+                    } else {
+                        piano.classList.remove('note-selection-mode');
+                    }
+                    this.updateSelectedNotes();
                     this.saveSettingsToCookies();
                 });
                 
