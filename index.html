@@ -146,6 +146,28 @@
             width: 441px; /* 7白鍵 * 63px = 441px */
         }
         
+        .note-display {
+            position: absolute;
+            top: -50px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--text-color);
+            background: var(--container-bg);
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 2px solid var(--border-color);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            z-index: 10;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .note-display.show {
+            visibility: visible;
+        }
+        
         /* スマホの場合のみピアノのサイズを99vwに調整 */
         @media (max-width: 480px) {
             .piano {
@@ -611,6 +633,7 @@
             
             <div class="piano" id="piano">
                 <!-- ピアノ鍵盤はJavaScriptで生成 -->
+                <div class="note-display" id="noteDisplay"></div>
             </div>
             
             <div class="controls">
@@ -1678,6 +1701,9 @@
                 // 初心者モードの設定を取得
                 this.beginnerMode = document.getElementById('beginnerMode').checked;
                 
+                // 音名表示を非表示にする
+                this.hideCorrectNotes();
+                
                 this.clearKeyHighlights();
                 document.getElementById('result').textContent = '';
                 document.getElementById('playAgain').disabled = false;
@@ -1933,6 +1959,11 @@
                 // 前回の問題の音を記録（次回の制約に使用）
                 this.previousQuestionNotes = [...correctNotes];
                 
+                // オクターブ無視モードの場合、正解の音名を表示
+                if (this.octaveIgnoreMode) {
+                    this.showCorrectNotes(correctNotes);
+                }
+                
                 this.clearKeyHighlights();
                 
                 if (this.octaveIgnoreMode) {
@@ -2006,6 +2037,27 @@
                 } else {
                     resultEl.innerHTML = resultText;
                 }
+            }
+            
+            showCorrectNotes(correctNotes) {
+                const noteDisplay = document.getElementById('noteDisplay');
+                const noteNames = correctNotes.map(note => {
+                    const noteName = note.slice(0, -1);
+                    return this.noteNames[noteName];
+                });
+                
+                noteDisplay.textContent = noteNames.join(', ');
+                noteDisplay.classList.add('show');
+                
+                // 3秒後に非表示にする
+                setTimeout(() => {
+                    this.hideCorrectNotes();
+                }, 3000);
+            }
+            
+            hideCorrectNotes() {
+                const noteDisplay = document.getElementById('noteDisplay');
+                noteDisplay.classList.remove('show');
             }
             
             clearKeyHighlights() {
