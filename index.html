@@ -786,6 +786,7 @@
                 this.selectedNotes = new Set(); // 選択された音名
                 this.activeOscillators = []; // アクティブなオシレーターを追跡
                 this.sequenceTimeouts = []; // 連音再生のタイムアウトを追跡
+                this.lastKeyTime = 0; // キー入力のデバウンス用
                 
                 // 楽器の定義（Tone.jsを使用）
                 this.instruments = {};
@@ -2025,7 +2026,12 @@
             }
             
             async handleKeyClick(note) {
-                if (!this.gameActive || this.answered) return;
+                if (!this.gameActive || this.answered) {
+                    console.log(`handleKeyClick ignored: gameActive=${this.gameActive}, answered=${this.answered}`);
+                    return;
+                }
+                
+                console.log(`handleKeyClick processing: ${note}`);
                 
                 // 回答音が有効な場合のみ音を再生
                 if (this.answerSoundEnabled) {
@@ -2965,6 +2971,28 @@
                 
                 // キーボードイベント
                 document.addEventListener('keydown', (event) => {
+                    // 入力フィールドにフォーカスがある場合はキー入力を無視
+                    const activeElement = document.activeElement;
+                    if (activeElement && (
+                        activeElement.tagName === 'INPUT' || 
+                        activeElement.tagName === 'SELECT' || 
+                        activeElement.tagName === 'TEXTAREA' ||
+                        activeElement.contentEditable === 'true'
+                    )) {
+                        return;
+                    }
+                    
+                    // 修飾キーが押されている場合は無視
+                    if (event.ctrlKey || event.altKey || event.metaKey) {
+                        return;
+                    }
+                    
+                    // 連続入力防止のためのデバウンス
+                    if (this.lastKeyTime && Date.now() - this.lastKeyTime < 100) {
+                        return;
+                    }
+                    this.lastKeyTime = Date.now();
+                    
                     if (event.code === 'Space') {
                         event.preventDefault();
                         if (this.gameActive && !this.answered) {
@@ -2972,6 +3000,7 @@
                         } else if (this.answered) {
                             this.startNewGame();
                         }
+                        return;
                     }
                     
                     // ピアノキーのマッピング
@@ -2995,6 +3024,9 @@
                         const note = keyMap[event.code];
                         const octave = '4'; // キーボード入力は常に4オクターブ
                         const fullNote = note + octave;
+                        
+                        // デバッグ情報をコンソールに出力
+                        console.log(`Key pressed: ${event.code} -> ${fullNote}, gameActive: ${this.gameActive}, answered: ${this.answered}`);
                         
                         // ゲーム中の場合は選択処理
                         if (this.gameActive && !this.answered) {
