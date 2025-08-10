@@ -1339,7 +1339,7 @@
                 const piano = document.getElementById('piano');
                 const whiteKeys = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
                 const blackKeys = ['C#', 'D#', null, 'F#', 'G#', 'A#', null];
-                const octave = 4; // 固定オクターブ
+                const octave = 4; // 回答用鍵盤は4オクターブで表示（音名のみ表示用）
                 const keyWidth = 63;
                 const blackKeyOffset = 42;
                 
@@ -2904,7 +2904,7 @@
                     if (keyMap[event.code]) {
                         event.preventDefault();
                         const note = keyMap[event.code];
-                        const octave = this.octaveIgnoreMode ? '4' : '4'; // オクターブ無視モードでは4オクターブ固定
+                        const octave = '4'; // キーボード入力は常に4オクターブ
                         const fullNote = note + octave;
                         
                         // ゲーム中の場合は選択処理
