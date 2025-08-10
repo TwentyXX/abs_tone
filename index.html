@@ -731,6 +731,7 @@
             <div class="controls">
                 <button id="newGame">新しいゲーム</button>
                 <button id="playAgain" disabled>もう一度再生</button>
+                <button id="stopSound" disabled style="background: #f39c12;">出題ストップ</button>
                 <button id="checkAnswer" disabled>答え合わせ (スペースキー)</button>
                 <button id="nextQuestion" disabled>次の問題</button>
                 <button id="clearLog" onclick="game.clearLog()">ログクリア</button>
@@ -783,6 +784,8 @@
                 this.answerSoundEnabled = true; // 回答時の音再生設定
                 this.noteSelectionMode = false; // 出題音名選択モード
                 this.selectedNotes = new Set(); // 選択された音名
+                this.activeOscillators = []; // アクティブなオシレーターを追跡
+                this.sequenceTimeouts = []; // 連音再生のタイムアウトを追跡
                 
                 // 楽器の定義（Tone.jsを使用）
                 this.instruments = {};
@@ -1265,6 +1268,13 @@
                         oscillator.start(now);
                         oscillator.stop(releaseEndTime);
                         
+                        // アクティブなオシレーターとして追跡
+                        this.activeOscillators.push({
+                            oscillator: oscillator,
+                            gainNode: gainNode,
+                            stopTime: releaseEndTime
+                        });
+                        
                         oscillators.push(oscillator);
                         gainNodes.push(gainNode);
                     }
@@ -1660,6 +1670,13 @@
                         
                         oscillator.start(now);
                         oscillator.stop(now + duration);
+                        
+                        // アクティブなオシレーターとして追跡
+                        this.activeOscillators.push({
+                            oscillator: oscillator,
+                            gainNode: gainNode,
+                            stopTime: now + duration
+                        });
                     }
                     
                 } catch (error) {
@@ -1725,10 +1742,15 @@
             }
             
             async playSequence(notes, interval = 0.8) {
+                // 既存のタイムアウトをクリア
+                this.clearSequenceTimeouts();
+                
                 for (let i = 0; i < notes.length; i++) {
-                    setTimeout(() => {
+                    const timeoutId = setTimeout(() => {
                         this.playNote(this.noteToFrequency(notes[i]), 1.0, true);
                     }, i * interval * 1000);
+                    
+                    this.sequenceTimeouts.push(timeoutId);
                 }
             }
             
@@ -1857,6 +1879,7 @@
                 this.clearKeyHighlights();
                 document.getElementById('result').textContent = '';
                 document.getElementById('playAgain').disabled = false;
+                document.getElementById('stopSound').disabled = false;
                 document.getElementById('checkAnswer').disabled = true;
                 document.getElementById('nextQuestion').disabled = true;
                 
@@ -2110,6 +2133,7 @@
                 
                 this.updateScore();
                 document.getElementById('checkAnswer').disabled = true;
+                document.getElementById('stopSound').disabled = true;
                 document.getElementById('nextQuestion').disabled = false;
             }
             
@@ -2715,6 +2739,47 @@
                 this.saveGameStateToCookies();
             }
             
+            stopAllSounds() {
+                // アクティブなオシレーターを停止
+                const now = this.audioContext ? Math.max(0, this.audioContext.currentTime) : 0;
+                this.activeOscillators.forEach(item => {
+                    try {
+                        if (item.oscillator && item.oscillator.context.state !== 'closed') {
+                            // ゲインを急速に下げて音を停止
+                            if (item.gainNode) {
+                                item.gainNode.gain.cancelScheduledValues(now);
+                                item.gainNode.gain.setValueAtTime(item.gainNode.gain.value, now);
+                                item.gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                            }
+                            // オシレーターを停止
+                            item.oscillator.stop(now + 0.05);
+                        }
+                    } catch (error) {
+                        console.log('オシレーター停止エラー:', error);
+                    }
+                });
+                
+                // 配列をクリア
+                this.activeOscillators = [];
+                
+                // 連音再生のタイムアウトをクリア
+                this.clearSequenceTimeouts();
+                
+                // 音声読み上げを停止
+                if (this.speechSynthesis) {
+                    this.speechSynthesis.cancel();
+                }
+                
+                console.log('すべての音を停止しました');
+            }
+            
+            clearSequenceTimeouts() {
+                this.sequenceTimeouts.forEach(timeoutId => {
+                    clearTimeout(timeoutId);
+                });
+                this.sequenceTimeouts = [];
+            }
+            
             speakNotes(notes) {
                 if (!this.beginnerMode || !this.speechSynthesis) return;
                 
@@ -2881,6 +2946,10 @@
                 
                 document.getElementById('nextQuestion').addEventListener('click', () => {
                     this.startNewGame();
+                });
+                
+                document.getElementById('stopSound').addEventListener('click', () => {
+                    this.stopAllSounds();
                 });
                 
                 // キーボードイベント
