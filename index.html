@@ -2159,10 +2159,13 @@
                     reviewButton.style.display = 'inline-block';
                     reviewButton.disabled = false;
                     
-                    // 自動で正解音をおさらい再生
+                    // 自動で正解音をおさらい再生（結果表示後すぐに実行）
                     setTimeout(() => {
-                        this.playCorrectSoundReview();
-                    }, 1000); // 1秒後に自動再生
+                        if (this.answered && this.currentQuestion) {
+                            console.log('正解音おさらい自動再生開始');
+                            this.playCorrectSoundReview();
+                        }
+                    }, 500); // 0.5秒後に自動再生
                 } else {
                     reviewButton.style.display = 'none';
                 }
