@@ -654,6 +654,7 @@
                 this.gameLog = [];
                 this.currentQuestionStartTime = null;
                 this.lastSettings = null;
+                this.previousQuestionNotes = []; // 前回の問題の音を記録
                 
                 // 楽器の定義（Tone.jsを使用）
                 this.instruments = {};
@@ -1298,6 +1299,153 @@
                 }
             }
             
+            generateSeparatedNotes(availableNotes, count) {
+                if (count === 1) {
+                    // 単音の場合は前回の音から制約を適用
+                    return this.generateSingleNoteWithConstraints(availableNotes);
+                }
+                
+                const selectedNotes = [];
+                const maxAttempts = 1000; // 無限ループを防ぐ
+                
+                // 最初の音を選択（前回の音から制約を適用）
+                const firstNote = this.generateSingleNoteWithConstraints(availableNotes);
+                selectedNotes.push(firstNote[0]);
+                
+                // 残りの音を選択（1オクターブ分以上離れるように）
+                for (let i = 1; i < count; i++) {
+                    let attempts = 0;
+                    let candidateNote;
+                    let isValidNote = false;
+                    
+                    while (!isValidNote && attempts < maxAttempts) {
+                        candidateNote = availableNotes[Math.floor(Math.random() * availableNotes.length)];
+                        isValidNote = true;
+                        
+                        // 既に選択された全ての音と1オクターブ分以上離れているかチェック
+                        for (const existingNote of selectedNotes) {
+                            const semitoneDistance = this.calculateSemitoneDistance(existingNote, candidateNote);
+                            if (semitoneDistance < 12) { // 1オクターブ = 12半音
+                                isValidNote = false;
+                                break;
+                            }
+                        }
+                        attempts++;
+                    }
+                    
+                    if (isValidNote) {
+                        selectedNotes.push(candidateNote);
+                    } else {
+                        // 条件を満たす音が見つからない場合は、可能な限り離れた音を選択
+                        let bestNote = availableNotes[0];
+                        let maxMinDistance = 0;
+                        
+                        for (const candidate of availableNotes) {
+                            let minDistance = Infinity;
+                            for (const existing of selectedNotes) {
+                                const distance = this.calculateSemitoneDistance(existing, candidate);
+                                minDistance = Math.min(minDistance, distance);
+                            }
+                            if (minDistance > maxMinDistance) {
+                                maxMinDistance = minDistance;
+                                bestNote = candidate;
+                            }
+                        }
+                        selectedNotes.push(bestNote);
+                    }
+                }
+                
+                return selectedNotes;
+            }
+            
+            generateSingleNoteWithConstraints(availableNotes) {
+                if (this.previousQuestionNotes.length === 0) {
+                    // 初回の場合はランダムに選択
+                    return [availableNotes[Math.floor(Math.random() * availableNotes.length)]];
+                }
+                
+                const maxAttempts = 1000;
+                let attempts = 0;
+                let candidateNote;
+                let isValidNote = false;
+                
+                while (!isValidNote && attempts < maxAttempts) {
+                    candidateNote = availableNotes[Math.floor(Math.random() * availableNotes.length)];
+                    isValidNote = true;
+                    
+                    // 前回の問題の全ての音と制約をチェック
+                    for (const previousNote of this.previousQuestionNotes) {
+                        const semitoneDistance = this.calculateSemitoneDistance(previousNote, candidateNote);
+                        const candidateNoteName = candidateNote.slice(0, -1);
+                        const previousNoteName = previousNote.slice(0, -1);
+                        
+                        // 1オクターブ分以上離れているかチェック
+                        if (semitoneDistance < 12) {
+                            isValidNote = false;
+                            break;
+                        }
+                        
+                        // 別オクターブの同じ音名でないかチェック
+                        if (candidateNoteName === previousNoteName) {
+                            isValidNote = false;
+                            break;
+                        }
+                    }
+                    attempts++;
+                }
+                
+                if (isValidNote) {
+                    return [candidateNote];
+                } else {
+                    // 条件を満たす音が見つからない場合は、可能な限り離れた音を選択
+                    let bestNote = availableNotes[0];
+                    let maxMinDistance = 0;
+                    
+                    for (const candidate of availableNotes) {
+                        let minDistance = Infinity;
+                        let hasSameNoteName = false;
+                        
+                        for (const previous of this.previousQuestionNotes) {
+                            const distance = this.calculateSemitoneDistance(previous, candidate);
+                            const candidateNoteName = candidate.slice(0, -1);
+                            const previousNoteName = previous.slice(0, -1);
+                            
+                            minDistance = Math.min(minDistance, distance);
+                            
+                            // 同じ音名の場合はペナルティを与える
+                            if (candidateNoteName === previousNoteName) {
+                                hasSameNoteName = true;
+                            }
+                        }
+                        
+                        // 同じ音名でない場合を優先し、その中で最も離れた音を選択
+                        if (!hasSameNoteName && minDistance > maxMinDistance) {
+                            maxMinDistance = minDistance;
+                            bestNote = candidate;
+                        }
+                    }
+                    
+                    return [bestNote];
+                }
+            }
+            
+            calculateSemitoneDistance(note1, note2) {
+                const noteMap = {
+                    'C': 0, 'C#': 1, 'D': 2, 'D#': 3, 'E': 4, 'F': 5,
+                    'F#': 6, 'G': 7, 'G#': 8, 'A': 9, 'A#': 10, 'B': 11
+                };
+                
+                const octave1 = parseInt(note1.slice(-1));
+                const noteName1 = note1.slice(0, -1);
+                const noteNumber1 = noteMap[noteName1] + octave1 * 12;
+                
+                const octave2 = parseInt(note2.slice(-1));
+                const noteName2 = note2.slice(0, -1);
+                const noteNumber2 = noteMap[noteName2] + octave2 * 12;
+                
+                return Math.abs(noteNumber2 - noteNumber1);
+            }
+            
             noteToFrequency(note) {
                 const noteMap = {
                     'C': 0, 'C#': 1, 'D': 2, 'D#': 3, 'E': 4, 'F': 5,
@@ -1447,30 +1595,19 @@
                 
                 switch (difficulty) {
                     case 'single':
-                        question.notes = [availableNotes[Math.floor(Math.random() * availableNotes.length)]];
+                        question.notes = this.generateSeparatedNotes(availableNotes, 1);
                         question.type = 'single';
                         break;
                         
                     case 'sequence':
                         const sequenceCount = parseInt(document.getElementById('sequenceCount').value);
-                        question.notes = [];
-                        for (let i = 0; i < sequenceCount; i++) {
-                            question.notes.push(availableNotes[Math.floor(Math.random() * availableNotes.length)]);
-                        }
+                        question.notes = this.generateSeparatedNotes(availableNotes, sequenceCount);
                         question.type = 'sequence';
                         break;
                         
                     case 'chord':
                         const chordCount = parseInt(document.getElementById('chordCount').value);
-                        question.notes = [];
-                        const usedNotes = new Set();
-                        while (question.notes.length < chordCount) {
-                            const note = availableNotes[Math.floor(Math.random() * availableNotes.length)];
-                            if (!usedNotes.has(note)) {
-                                question.notes.push(note);
-                                usedNotes.add(note);
-                            }
-                        }
+                        question.notes = this.generateSeparatedNotes(availableNotes, chordCount);
                         question.type = 'chord';
                         break;
                 }
@@ -1779,6 +1916,9 @@
             
             showResult(isCorrect, correctNotes, selectedNotes) {
                 const resultEl = document.getElementById('result');
+                
+                // 前回の問題の音を記録（次回の制約に使用）
+                this.previousQuestionNotes = [...correctNotes];
                 
                 this.clearKeyHighlights();
                 
