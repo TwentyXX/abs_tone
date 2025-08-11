@@ -16,8 +16,132 @@
     <script>
       const tonenames = "ドダレロミマメソリラチシ"
       
-      tonename.textContent = tonenames[Math.floor(Math.random() * tonenames.length)]
+      // 音名と周波数のマッピング（C4=261.63Hzを基準）
+      const noteFrequencies = {
+        'ド': 261.63,
+        'ダ': 277.18, // C#
+        'レ': 293.66,
+        'ロ': 311.13, // D#
+        'ミ': 329.63,
+        'マ': 349.23, // F
+        'メ': 369.99, // F#
+        'ソ': 392.00,
+        'リ': 415.30, // G#
+        'ラ': 440.00,
+        'チ': 466.16, // A#
+        'シ': 493.88
+      }
       
+      let audioContext
+      let analyser
+      let microphone
+      let dataArray
+      let currentNote = ''
+      let correctTime = 0
+      let lastTime = 0
+      
+      function generateNewNote() {
+        currentNote = tonenames[Math.floor(Math.random() * tonenames.length)]
+        tonename.textContent = currentNote
+        correctTime = 0
+      }
+      
+      function frequencyToNote(frequency) {
+        let minDiff = Infinity
+        let closestNote = ''
+        
+        for (const [note, freq] of Object.entries(noteFrequencies)) {
+          const diff = Math.abs(frequency - freq)
+          if (diff < minDiff) {
+            minDiff = diff
+            closestNote = note
+          }
+        }
+        
+        // 許容範囲を±20Hzに設定
+        return minDiff < 20 ? closestNote : null
+      }
+      
+      function getPitch(dataArray) {
+        // 自己相関を使用した基本周波数検出
+        const sampleRate = audioContext.sampleRate
+        const bufferLength = dataArray.length
+        const correlations = new Array(bufferLength).fill(0)
+        
+        // 自己相関計算
+        for (let i = 0; i < bufferLength; i++) {
+          for (let j = 0; j < bufferLength - i; j++) {
+            correlations[i] += dataArray[j] * dataArray[j + i]
+          }
+        }
+        
+        // 最大値を見つける（最初のピークをスキップ）
+        let maxCorrelation = 0
+        let bestOffset = 0
+        
+        for (let i = 1; i < correlations.length / 2; i++) {
+          if (correlations[i] > maxCorrelation) {
+            maxCorrelation = correlations[i]
+            bestOffset = i
+          }
+        }
+        
+        return bestOffset > 0 ? sampleRate / bestOffset : 0
+      }
+      
+      function analyzeAudio() {
+        analyser.getFloatTimeDomainData(dataArray)
+        
+        const frequency = getPitch(dataArray)
+        const detectedNote = frequencyToNote(frequency)
+        
+        const currentTime = Date.now()
+        
+        if (detectedNote === currentNote) {
+          if (lastTime === 0) {
+            lastTime = currentTime
+          }
+          correctTime = currentTime - lastTime
+          
+          // 3秒間正確な音程が続いた場合
+          if (correctTime >= 3000) {
+            generateNewNote()
+            lastTime = 0
+          }
+        } else {
+          correctTime = 0
+          lastTime = 0
+        }
+        
+        requestAnimationFrame(analyzeAudio)
+      }
+      
+      async function startAudio() {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+          audioContext = new AudioContext()
+          analyser = audioContext.createAnalyser()
+          microphone = audioContext.createMediaStreamSource(stream)
+          
+          analyser.fftSize = 4096
+          const bufferLength = analyser.fftSize
+          dataArray = new Float32Array(bufferLength)
+          
+          microphone.connect(analyser)
+          
+          generateNewNote()
+          analyzeAudio()
+        } catch (err) {
+          console.error('マイクへのアクセスに失敗しました:', err)
+        }
+      }
+      
+      // ページ読み込み時に開始
+      window.addEventListener('load', () => {
+        // ユーザーの操作が必要な場合があるため、クリックで開始
+        document.addEventListener('click', startAudio, { once: true })
+        generateNewNote()
+      })
     </script>
 </body>
 </html>
