@@ -101,6 +101,13 @@
     <div style="text-align: center; margin-bottom: 20px;">
         <a href="index.html" style="color: #00ff00; text-decoration: none; font-size: 16px; padding: 8px 16px; border: 2px solid #00ff00; border-radius: 5px; transition: all 0.3s ease;">🎹 ピアノ音感ゲームへ</a>
     </div>
+    
+    <div style="text-align: center; margin-bottom: 20px; color: #ffff00; font-size: 14px;">
+        <p>🎤 音程練習ゲーム</p>
+        <p>表示された音名を正確に3秒間歌うか楽器で演奏してください</p>
+        <p>画面をタッチすると参考音が再生されます</p>
+    </div>
+    
     <h1 id="tonename"></h1>
     
     <div class="meter-container">
@@ -394,21 +401,80 @@
       
       async function startAudio() {
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-          audioContext = new AudioContext()
+          // マイクアクセスの制約を明示的に指定
+          const constraints = {
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+              sampleRate: 44100
+            }
+          }
+          
+          // マイクアクセスを要求
+          const stream = await navigator.mediaDevices.getUserMedia(constraints)
+          
+          // AudioContextを作成（ユーザー操作後なので問題なし）
+          audioContext = new (window.AudioContext || window.webkitAudioContext)()
+          
+          // AudioContextが停止状態の場合は再開
+          if (audioContext.state === 'suspended') {
+            await audioContext.resume()
+          }
+          
           analyser = audioContext.createAnalyser()
           microphone = audioContext.createMediaStreamSource(stream)
           
           analyser.fftSize = 4096
+          analyser.smoothingTimeConstant = 0.8
           const bufferLength = analyser.fftSize
           dataArray = new Float32Array(bufferLength)
           
           microphone.connect(analyser)
           
+          // 成功メッセージを表示
+          const successMsg = document.createElement('div')
+          successMsg.style.cssText = `
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #00ff00;
+            color: #000;
+            padding: 10px 20px;
+            border-radius: 5px;
+            z-index: 1000;
+            font-weight: bold;
+          `
+          successMsg.textContent = 'マイクが正常に開始されました！'
+          document.body.appendChild(successMsg)
+          
+          setTimeout(() => {
+            if (successMsg.parentNode) {
+              successMsg.remove()
+            }
+          }, 3000)
+          
           generateNewNote()
           analyzeAudio()
+          
         } catch (err) {
           console.error('マイクへのアクセスに失敗しました:', err)
+          
+          // 詳細なエラー情報を表示
+          let errorMessage = 'マイクアクセスに失敗しました。'
+          
+          if (err.name === 'NotAllowedError') {
+            errorMessage = 'マイクアクセスが拒否されました。ブラウザの設定を確認してください。'
+          } else if (err.name === 'NotFoundError') {
+            errorMessage = 'マイクが見つかりません。デバイスを確認してください。'
+          } else if (err.name === 'NotSupportedError') {
+            errorMessage = 'このブラウザはマイクアクセスに対応していません。'
+          } else if (err.name === 'NotReadableError') {
+            errorMessage = 'マイクが他のアプリケーションで使用中です。'
+          }
+          
+          throw new Error(errorMessage)
         }
       }
       
@@ -443,12 +509,72 @@
         })
       }
       
-      // ページ読み込み時に開始
+      // スタートボタンを追加
+      function createStartButton() {
+        const startButton = document.createElement('button')
+        startButton.textContent = 'マイクを開始'
+        startButton.style.cssText = `
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          padding: 20px 40px;
+          font-size: 18px;
+          background-color: #00ff00;
+          color: #000;
+          border: none;
+          border-radius: 10px;
+          cursor: pointer;
+          z-index: 1000;
+          box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+        `
+        
+        startButton.addEventListener('click', async () => {
+          try {
+            startButton.textContent = 'マイクアクセス中...'
+            startButton.disabled = true
+            await startAudio()
+            startButton.remove()
+          } catch (error) {
+            startButton.textContent = 'エラー: もう一度お試しください'
+            startButton.disabled = false
+            console.error('マイクアクセスエラー:', error)
+            
+            // エラーメッセージを表示
+            const errorMsg = document.createElement('div')
+            errorMsg.style.cssText = `
+              position: fixed;
+              top: 60%;
+              left: 50%;
+              transform: translate(-50%, -50%);
+              color: #ff0000;
+              text-align: center;
+              z-index: 999;
+              font-size: 14px;
+            `
+            errorMsg.innerHTML = `
+              <p>マイクアクセスに失敗しました</p>
+              <p>ブラウザの設定でマイクを許可してください</p>
+              <p>または、HTTPSでアクセスしてください</p>
+            `
+            document.body.appendChild(errorMsg)
+            
+            setTimeout(() => {
+              if (errorMsg.parentNode) {
+                errorMsg.remove()
+              }
+            }, 5000)
+          }
+        })
+        
+        document.body.appendChild(startButton)
+      }
+      
+      // ページ読み込み時に開始ボタンを表示
       window.addEventListener('load', () => {
-        // ユーザーの操作が必要な場合があるため、クリックで開始
-        document.addEventListener('click', startAudio, { once: true })
         generateNewNote()
         setupTouchEvents()
+        createStartButton()
       })
     </script>
 </body>
