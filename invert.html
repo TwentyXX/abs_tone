@@ -5,14 +5,136 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
     <style>
+      body {
+        font-family: 'Courier New', monospace;
+        background-color: #1a1a1a;
+        color: #00ff00;
+        margin: 0;
+        padding: 20px;
+      }
+      
       #tonename {
         text-align: center;
-        font-size: 50vmin;
+        font-size: 30vmin;
+        margin-bottom: 20px;
+        color: #ffffff;
+      }
+      
+      .meter-container {
+        max-width: 800px;
+        margin: 0 auto;
+        background-color: #2a2a2a;
+        border: 2px solid #00ff00;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+      }
+      
+      .meter-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: 15px 0;
+        padding: 10px;
+        background-color: #333;
+        border-radius: 5px;
+      }
+      
+      .meter-label {
+        font-weight: bold;
+        min-width: 120px;
+      }
+      
+      .meter-value {
+        font-size: 1.2em;
+        color: #00ffff;
+        min-width: 100px;
+        text-align: right;
+      }
+      
+      .frequency-bar {
+        width: 300px;
+        height: 20px;
+        background-color: #444;
+        border-radius: 10px;
+        overflow: hidden;
+        position: relative;
+      }
+      
+      .frequency-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #ff0000, #ffff00, #00ff00);
+        width: 0%;
+        transition: width 0.1s ease;
+      }
+      
+      .status-indicator {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background-color: #666;
+        transition: background-color 0.3s ease;
+      }
+      
+      .status-correct {
+        background-color: #00ff00;
+        box-shadow: 0 0 10px #00ff00;
+      }
+      
+      .progress-bar {
+        width: 200px;
+        height: 10px;
+        background-color: #444;
+        border-radius: 5px;
+        overflow: hidden;
+      }
+      
+      .progress-fill {
+        height: 100%;
+        background-color: #00ff00;
+        width: 0%;
+        transition: width 0.1s ease;
       }
     </style>
 </head>
 <body>
     <h1 id="tonename"></h1>
+    
+    <div class="meter-container">
+      <div class="meter-row">
+        <span class="meter-label">周波数:</span>
+        <span class="meter-value" id="frequency-display">0.0 Hz</span>
+        <div class="frequency-bar">
+          <div class="frequency-fill" id="frequency-bar"></div>
+        </div>
+      </div>
+      
+      <div class="meter-row">
+        <span class="meter-label">検出音名:</span>
+        <span class="meter-value" id="detected-note">---</span>
+        <div class="status-indicator" id="match-indicator"></div>
+      </div>
+      
+      <div class="meter-row">
+        <span class="meter-label">目標音名:</span>
+        <span class="meter-value" id="target-note">---</span>
+        <div class="status-indicator"></div>
+      </div>
+      
+      <div class="meter-row">
+        <span class="meter-label">経過時間:</span>
+        <span class="meter-value" id="timer-display">0.0 秒</span>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progress-bar"></div>
+        </div>
+      </div>
+      
+      <div class="meter-row">
+        <span class="meter-label">状態:</span>
+        <span class="meter-value" id="status-display">待機中</span>
+        <div class="status-indicator" id="status-indicator"></div>
+      </div>
+    </div>
     <script>
       const tonenames = "ドダレロミマメソリラチシ"
       
@@ -43,7 +165,31 @@
       function generateNewNote() {
         currentNote = tonenames[Math.floor(Math.random() * tonenames.length)]
         tonename.textContent = currentNote
+        document.getElementById('target-note').textContent = currentNote
         correctTime = 0
+        updateUI()
+      }
+      
+      function updateUI() {
+        const frequencyDisplay = document.getElementById('frequency-display')
+        const detectedNoteDisplay = document.getElementById('detected-note')
+        const timerDisplay = document.getElementById('timer-display')
+        const progressBar = document.getElementById('progress-bar')
+        const matchIndicator = document.getElementById('match-indicator')
+        const statusDisplay = document.getElementById('status-display')
+        const statusIndicator = document.getElementById('status-indicator')
+        const frequencyBar = document.getElementById('frequency-bar')
+        
+        return {
+          frequencyDisplay,
+          detectedNoteDisplay,
+          timerDisplay,
+          progressBar,
+          matchIndicator,
+          statusDisplay,
+          statusIndicator,
+          frequencyBar
+        }
       }
       
       function frequencyToNote(frequency) {
@@ -94,14 +240,40 @@
         
         const frequency = getPitch(dataArray)
         const detectedNote = frequencyToNote(frequency)
-        
         const currentTime = Date.now()
+        
+        // UI要素を取得
+        const ui = updateUI()
+        
+        // 周波数表示を更新
+        ui.frequencyDisplay.textContent = frequency > 0 ? `${frequency.toFixed(1)} Hz` : '0.0 Hz'
+        
+        // 周波数バーを更新（80Hz-800Hzの範囲で表示）
+        const minFreq = 80
+        const maxFreq = 800
+        const freqPercent = Math.min(Math.max((frequency - minFreq) / (maxFreq - minFreq) * 100, 0), 100)
+        ui.frequencyBar.style.width = `${freqPercent}%`
+        
+        // 検出された音名を表示
+        ui.detectedNoteDisplay.textContent = detectedNote || '---'
         
         if (detectedNote === currentNote) {
           if (lastTime === 0) {
             lastTime = currentTime
           }
           correctTime = currentTime - lastTime
+          
+          // マッチ状態のUI更新
+          ui.matchIndicator.classList.add('status-correct')
+          ui.statusDisplay.textContent = '音程一致'
+          ui.statusIndicator.classList.add('status-correct')
+          
+          // 進捗バーを更新
+          const progressPercent = Math.min((correctTime / 3000) * 100, 100)
+          ui.progressBar.style.width = `${progressPercent}%`
+          
+          // タイマー表示を更新
+          ui.timerDisplay.textContent = `${(correctTime / 1000).toFixed(1)} 秒`
           
           // 3秒間正確な音程が続いた場合
           if (correctTime >= 3000) {
@@ -111,6 +283,13 @@
         } else {
           correctTime = 0
           lastTime = 0
+          
+          // 非マッチ状態のUI更新
+          ui.matchIndicator.classList.remove('status-correct')
+          ui.statusDisplay.textContent = detectedNote ? '音程不一致' : '音声検出中'
+          ui.statusIndicator.classList.remove('status-correct')
+          ui.progressBar.style.width = '0%'
+          ui.timerDisplay.textContent = '0.0 秒'
         }
         
         requestAnimationFrame(analyzeAudio)
