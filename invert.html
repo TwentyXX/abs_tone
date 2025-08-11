@@ -219,41 +219,49 @@
         }
         rms = Math.sqrt(rms / bufferLength)
         
-        // 音量が小さすぎる場合は0を返す
-        if (rms < 0.01) {
+        // 音量閾値を下げる
+        if (rms < 0.001) {
           return 0
         }
         
-        // 自己相関を使用した基本周波数検出
-        const correlations = new Array(Math.floor(bufferLength / 2)).fill(0)
+        // FFTを使用した周波数解析
+        const fftSize = bufferLength
+        const freqData = new Float32Array(fftSize / 2)
         
-        // 自己相関計算（正規化）
-        for (let i = 0; i < correlations.length; i++) {
-          let correlation = 0
-          for (let j = 0; j < bufferLength - i; j++) {
-            correlation += dataArray[j] * dataArray[j + i]
+        // 簡易FFT（実際にはパワースペクトラム計算）
+        for (let k = 1; k < freqData.length; k++) {
+          let real = 0
+          let imag = 0
+          
+          for (let n = 0; n < bufferLength; n++) {
+            const angle = -2 * Math.PI * k * n / bufferLength
+            real += dataArray[n] * Math.cos(angle)
+            imag += dataArray[n] * Math.sin(angle)
           }
-          correlations[i] = correlation / (bufferLength - i)
+          
+          freqData[k] = Math.sqrt(real * real + imag * imag)
         }
         
-        // 人間の声・楽器の範囲に制限（80Hz-2000Hz）
-        const minPeriod = Math.floor(sampleRate / 2000) // 2000Hz対応
-        const maxPeriod = Math.floor(sampleRate / 80)   // 80Hz対応
+        // 人間の声・楽器の範囲に制限（80Hz-1000Hz）
+        const minFreq = 80
+        const maxFreq = 1000
+        const minBin = Math.floor(minFreq * fftSize / sampleRate)
+        const maxBin = Math.floor(maxFreq * fftSize / sampleRate)
         
-        let maxCorrelation = 0
-        let bestOffset = 0
+        // 最大パワーを持つ周波数を見つける
+        let maxPower = 0
+        let peakBin = 0
         
-        // 最初のピークを無視して、有効な範囲で最大相関を探す
-        for (let i = minPeriod; i < Math.min(maxPeriod, correlations.length); i++) {
-          if (correlations[i] > maxCorrelation) {
-            maxCorrelation = correlations[i]
-            bestOffset = i
+        for (let i = minBin; i < maxBin && i < freqData.length; i++) {
+          if (freqData[i] > maxPower) {
+            maxPower = freqData[i]
+            peakBin = i
           }
         }
         
-        // 相関が十分に強い場合のみ周波数を返す
-        if (maxCorrelation > 0.3 && bestOffset > 0) {
-          return sampleRate / bestOffset
+        // パワーが十分に強い場合のみ周波数を返す
+        if (maxPower > rms * 10 && peakBin > 0) {
+          return peakBin * sampleRate / fftSize
         }
         
         return 0
