@@ -161,6 +161,9 @@
       let currentNote = ''
       let correctTime = 0
       let lastTime = 0
+      let pianoOscillator = null
+      let pianoGain = null
+      let isPlaying = false
       
       function generateNewNote() {
         currentNote = tonenames[Math.floor(Math.random() * tonenames.length)]
@@ -168,6 +171,62 @@
         document.getElementById('target-note').textContent = currentNote
         correctTime = 0
         updateUI()
+      }
+      
+      function getFrequencyForNote(note) {
+        // 基本周波数（4オクターブ目）を返す
+        const frequencies = noteFrequencies[note]
+        return frequencies ? frequencies[1] : 440 // デフォルトはA4
+      }
+      
+      function startPianoSound() {
+        if (isPlaying || !audioContext) return
+        
+        try {
+          const frequency = getFrequencyForNote(currentNote)
+          
+          // オシレーターを作成
+          pianoOscillator = audioContext.createOscillator()
+          pianoGain = audioContext.createGain()
+          
+          // ピアノらしい音色のために複数の波形を合成
+          pianoOscillator.type = 'triangle'
+          pianoOscillator.frequency.setValueAtTime(frequency, audioContext.currentTime)
+          
+          // エンベロープ（ADSR）を設定
+          pianoGain.gain.setValueAtTime(0, audioContext.currentTime)
+          pianoGain.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01) // Attack
+          pianoGain.gain.exponentialRampToValueAtTime(0.1, audioContext.currentTime + 0.1) // Decay/Sustain
+          
+          // 接続
+          pianoOscillator.connect(pianoGain)
+          pianoGain.connect(audioContext.destination)
+          
+          // 再生開始
+          pianoOscillator.start()
+          isPlaying = true
+          
+        } catch (err) {
+          console.error('ピアノ音の再生に失敗しました:', err)
+        }
+      }
+      
+      function stopPianoSound() {
+        if (!isPlaying || !pianoOscillator) return
+        
+        try {
+          // フェードアウト
+          pianoGain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1)
+          
+          // 停止
+          pianoOscillator.stop(audioContext.currentTime + 0.1)
+          pianoOscillator = null
+          pianoGain = null
+          isPlaying = false
+          
+        } catch (err) {
+          console.error('ピアノ音の停止に失敗しました:', err)
+        }
       }
       
       function updateUI() {
@@ -350,11 +409,43 @@
         }
       }
       
+      // タッチ・マウスイベントの処理
+      function setupTouchEvents() {
+        const body = document.body
+        
+        // タッチ開始
+        body.addEventListener('touchstart', (e) => {
+          e.preventDefault()
+          startPianoSound()
+        })
+        
+        // タッチ終了
+        body.addEventListener('touchend', (e) => {
+          e.preventDefault()
+          stopPianoSound()
+        })
+        
+        // マウス対応（デスクトップ用）
+        body.addEventListener('mousedown', (e) => {
+          startPianoSound()
+        })
+        
+        body.addEventListener('mouseup', (e) => {
+          stopPianoSound()
+        })
+        
+        // マウスが画面外に出た場合も停止
+        body.addEventListener('mouseleave', (e) => {
+          stopPianoSound()
+        })
+      }
+      
       // ページ読み込み時に開始
       window.addEventListener('load', () => {
         // ユーザーの操作が必要な場合があるため、クリックで開始
         document.addEventListener('click', startAudio, { once: true })
         generateNewNote()
+        setupTouchEvents()
       })
     </script>
 </body>
