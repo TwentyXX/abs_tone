@@ -400,37 +400,76 @@
       }
       
       async function startAudio() {
+        showDebugInfo('startAudio関数が呼び出されました')
+        
         try {
-          // マイクアクセスの制約を明示的に指定
+          // ブラウザサポートチェック
+          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error('このブラウザはgetUserMediaに対応していません')
+          }
+          
+          showDebugInfo('getUserMediaサポートを確認しました')
+          
+          // iOS Safari用の制約設定
           const constraints = {
             audio: {
               echoCancellation: true,
               noiseSuppression: true,
               autoGainControl: true,
-              sampleRate: 44100
+              sampleRate: 44100,
+              // iOS用の追加設定
+              channelCount: 1,
+              latency: 0.1
             }
           }
           
-          // マイクアクセスを要求
-          const stream = await navigator.mediaDevices.getUserMedia(constraints)
+          showDebugInfo('マイクアクセスを要求中...')
           
-          // AudioContextを作成（ユーザー操作後なので問題なし）
-          audioContext = new (window.AudioContext || window.webkitAudioContext)()
+          // マイクアクセスを要求（タイムアウト付き）
+          const stream = await Promise.race([
+            navigator.mediaDevices.getUserMedia(constraints),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('マイクアクセスがタイムアウトしました')), 10000)
+            )
+          ])
+          
+          showDebugInfo('マイクアクセス許可を取得しました')
+          
+          // AudioContextを作成
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext
+          if (!AudioContextClass) {
+            throw new Error('AudioContextがサポートされていません')
+          }
+          
+          audioContext = new AudioContextClass({
+            sampleRate: 44100,
+            latencyHint: 'interactive'
+          })
+          
+          showDebugInfo(`AudioContext作成完了 (state: ${audioContext.state})`)
           
           // AudioContextが停止状態の場合は再開
           if (audioContext.state === 'suspended') {
+            showDebugInfo('AudioContextを再開中...')
             await audioContext.resume()
+            showDebugInfo(`AudioContext再開完了 (state: ${audioContext.state})`)
           }
           
+          // アナライザーとマイクロフォンを設定
           analyser = audioContext.createAnalyser()
           microphone = audioContext.createMediaStreamSource(stream)
           
           analyser.fftSize = 4096
           analyser.smoothingTimeConstant = 0.8
+          analyser.minDecibels = -90
+          analyser.maxDecibels = -10
+          
           const bufferLength = analyser.fftSize
           dataArray = new Float32Array(bufferLength)
           
           microphone.connect(analyser)
+          
+          showDebugInfo('オーディオ解析設定完了')
           
           // 成功メッセージを表示
           const successMsg = document.createElement('div')
@@ -455,10 +494,15 @@
             }
           }, 3000)
           
-          generateNewNote()
-          analyzeAudio()
+          // 少し待ってから解析開始
+          setTimeout(() => {
+            generateNewNote()
+            analyzeAudio()
+            showDebugInfo('音声解析を開始しました')
+          }, 500)
           
         } catch (err) {
+          showDebugInfo(`エラー発生: ${err.name} - ${err.message}`)
           console.error('マイクへのアクセスに失敗しました:', err)
           
           // 詳細なエラー情報を表示
@@ -472,6 +516,10 @@
             errorMessage = 'このブラウザはマイクアクセスに対応していません。'
           } else if (err.name === 'NotReadableError') {
             errorMessage = 'マイクが他のアプリケーションで使用中です。'
+          } else if (err.message.includes('タイムアウト')) {
+            errorMessage = 'マイクアクセスがタイムアウトしました。再度お試しください。'
+          } else {
+            errorMessage = `予期しないエラー: ${err.message}`
           }
           
           throw new Error(errorMessage)
@@ -509,8 +557,54 @@
         })
       }
       
+      // デバッグ情報を表示する関数
+      function showDebugInfo(message) {
+        console.log(message)
+        const debugDiv = document.getElementById('debug-info') || (() => {
+          const div = document.createElement('div')
+          div.id = 'debug-info'
+          div.style.cssText = `
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: #00ff00;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            max-width: 300px;
+            z-index: 1001;
+          `
+          document.body.appendChild(div)
+          return div
+        })()
+        
+        debugDiv.innerHTML += `<div>${new Date().toLocaleTimeString()}: ${message}</div>`
+        debugDiv.scrollTop = debugDiv.scrollHeight
+      }
+      
+      // ブラウザとデバイス情報をチェック
+      function checkBrowserSupport() {
+        const userAgent = navigator.userAgent
+        const isIOS = /iPad|iPhone|iPod/.test(userAgent)
+        const isSafari = /Safari/.test(userAgent) && !/Chrome/.test(userAgent)
+        const isHTTPS = location.protocol === 'https:'
+        const hasGetUserMedia = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)
+        
+        showDebugInfo(`iOS: ${isIOS}, Safari: ${isSafari}, HTTPS: ${isHTTPS}, getUserMedia: ${hasGetUserMedia}`)
+        
+        return {
+          isIOS,
+          isSafari,
+          isHTTPS,
+          hasGetUserMedia
+        }
+      }
+      
       // スタートボタンを追加
       function createStartButton() {
+        const browserInfo = checkBrowserSupport()
+        
         const startButton = document.createElement('button')
         startButton.textContent = 'マイクを開始'
         startButton.style.cssText = `
@@ -527,43 +621,114 @@
           cursor: pointer;
           z-index: 1000;
           box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+          touch-action: manipulation;
         `
         
-        startButton.addEventListener('click', async () => {
+        // iOS特有の警告を表示
+        if (browserInfo.isIOS && !browserInfo.isHTTPS) {
+          const warningMsg = document.createElement('div')
+          warningMsg.style.cssText = `
+            position: fixed;
+            top: 30%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #ff6600;
+            color: #fff;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 999;
+            font-size: 14px;
+            max-width: 300px;
+          `
+          warningMsg.innerHTML = `
+            <p><strong>⚠️ iOS注意事項</strong></p>
+            <p>HTTPSでアクセスしてください</p>
+            <p>現在のプロトコル: ${location.protocol}</p>
+          `
+          document.body.appendChild(warningMsg)
+        }
+        
+        startButton.addEventListener('click', async (event) => {
+          // イベントの伝播を停止
+          event.preventDefault()
+          event.stopPropagation()
+          
+          showDebugInfo('スタートボタンがクリックされました')
+          
           try {
             startButton.textContent = 'マイクアクセス中...'
             startButton.disabled = true
+            
+            // iOS Safari用の追加待機時間
+            if (browserInfo.isIOS) {
+              showDebugInfo('iOS検出: 追加の初期化を実行中...')
+              await new Promise(resolve => setTimeout(resolve, 100))
+            }
+            
             await startAudio()
             startButton.remove()
+            
+            // デバッグ情報を一定時間後に非表示
+            setTimeout(() => {
+              const debugDiv = document.getElementById('debug-info')
+              if (debugDiv) {
+                debugDiv.style.display = 'none'
+              }
+            }, 10000)
+            
           } catch (error) {
             startButton.textContent = 'エラー: もう一度お試しください'
             startButton.disabled = false
-            console.error('マイクアクセスエラー:', error)
             
-            // エラーメッセージを表示
+            showDebugInfo(`エラー: ${error.name} - ${error.message}`)
+            
+            // 詳細なエラーメッセージを表示
             const errorMsg = document.createElement('div')
             errorMsg.style.cssText = `
               position: fixed;
               top: 60%;
               left: 50%;
               transform: translate(-50%, -50%);
-              color: #ff0000;
+              background-color: #ff0000;
+              color: #fff;
+              padding: 15px;
+              border-radius: 10px;
               text-align: center;
               z-index: 999;
               font-size: 14px;
+              max-width: 350px;
             `
-            errorMsg.innerHTML = `
-              <p>マイクアクセスに失敗しました</p>
-              <p>ブラウザの設定でマイクを許可してください</p>
-              <p>または、HTTPSでアクセスしてください</p>
-            `
+            
+            let errorHTML = `<p><strong>マイクアクセスエラー</strong></p>`
+            
+            if (error.name === 'NotAllowedError') {
+              errorHTML += `
+                <p>マイクアクセスが拒否されました</p>
+                <p>Safari設定 → プライバシーとセキュリティ → マイク でこのサイトを許可してください</p>
+              `
+            } else if (error.name === 'NotFoundError') {
+              errorHTML += `<p>マイクが見つかりません</p>`
+            } else if (error.name === 'NotSupportedError') {
+              errorHTML += `<p>このブラウザはマイクに対応していません</p>`
+            } else if (error.name === 'NotReadableError') {
+              errorHTML += `<p>マイクが他のアプリで使用中です</p>`
+            } else {
+              errorHTML += `<p>エラー: ${error.message}</p>`
+            }
+            
+            if (!browserInfo.isHTTPS) {
+              errorHTML += `<p><strong>HTTPSでアクセスしてください</strong></p>`
+            }
+            
+            errorMsg.innerHTML = errorHTML
             document.body.appendChild(errorMsg)
             
             setTimeout(() => {
               if (errorMsg.parentNode) {
                 errorMsg.remove()
               }
-            }, 5000)
+            }, 8000)
           }
         })
         
@@ -572,9 +737,28 @@
       
       // ページ読み込み時に開始ボタンを表示
       window.addEventListener('load', () => {
+        showDebugInfo('ページが読み込まれました')
         generateNewNote()
         setupTouchEvents()
-        createStartButton()
+        
+        // 少し遅延してボタンを作成（iOS対応）
+        setTimeout(() => {
+          createStartButton()
+        }, 100)
+      })
+      
+      // iOS Safari用の追加イベントリスナー
+      document.addEventListener('DOMContentLoaded', () => {
+        showDebugInfo('DOMContentLoadedイベント発生')
+      })
+      
+      // ページの可視性変更を監視
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          showDebugInfo('ページが非表示になりました')
+        } else {
+          showDebugInfo('ページが表示されました')
+        }
       })
     </script>
 </body>
