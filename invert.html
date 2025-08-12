@@ -11,6 +11,8 @@
         color: #00ff00;
         margin: 0;
         padding: 20px;
+        min-height: 100vh;
+        overflow-y: auto;
       }
       
       #tonename {
@@ -102,13 +104,6 @@
         <a href="index.html" style="color: #00ff00; text-decoration: none; font-size: 16px; padding: 8px 16px; border: 2px solid #00ff00; border-radius: 5px; transition: all 0.3s ease;">🎹 ピアノ音感ゲームへ</a>
     </div>
     
-    <div style="text-align: center; margin-bottom: 20px; color: #ffff00; font-size: 14px;">
-        <p>🎤 音程練習ゲーム</p>
-        <p>表示された音名を正確に3秒間歌うか楽器で演奏してください</p>
-        <p>画面をタッチすると参考音が再生されます</p>
-        <p style="color: #ff6600; font-size: 12px;">※iPhoneの場合：「マイクを開始」ボタンを必ずタップしてください</p>
-    </div>
-    
     <h1 id="tonename"></h1>
     
     <div class="meter-container">
@@ -145,6 +140,13 @@
         <span class="meter-value" id="status-display">待機中</span>
         <div class="status-indicator" id="status-indicator"></div>
       </div>
+    </div>
+    
+    <div style="text-align: center; margin-top: 30px; color: #ffff00; font-size: 14px;">
+        <p>🎤 音程練習ゲーム</p>
+        <p>表示された音名を正確に3秒間歌うか楽器で演奏してください</p>
+        <p>画面をタッチすると参考音が再生されます</p>
+        <p style="color: #ff6600; font-size: 12px;">※iPhoneの場合：「マイクを開始」ボタンを必ずタップしてください</p>
     </div>
     <script>
       const tonenames = "ドガレポミファケゾビナテシ"
