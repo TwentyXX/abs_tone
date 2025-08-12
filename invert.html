@@ -106,6 +106,7 @@
         <p>🎤 音程練習ゲーム</p>
         <p>表示された音名を正確に3秒間歌うか楽器で演奏してください</p>
         <p>画面をタッチすると参考音が再生されます</p>
+        <p style="color: #ff6600; font-size: 12px;">※iPhoneの場合：「マイクを開始」ボタンを必ずタップしてください</p>
     </div>
     
     <h1 id="tonename"></h1>
@@ -530,25 +531,37 @@
       function setupTouchEvents() {
         const body = document.body
         
-        // タッチ開始
+        // iOS Safari用のタッチイベント設定
+        const touchOptions = { passive: false }
+        
+        // タッチ開始（スタートボタン以外の場所）
         body.addEventListener('touchstart', (e) => {
-          e.preventDefault()
-          startPianoSound()
-        })
+          // スタートボタンでない場合のみピアノ音を再生
+          if (!e.target.closest('button')) {
+            e.preventDefault()
+            startPianoSound()
+          }
+        }, touchOptions)
         
         // タッチ終了
         body.addEventListener('touchend', (e) => {
-          e.preventDefault()
-          stopPianoSound()
-        })
+          if (!e.target.closest('button')) {
+            e.preventDefault()
+            stopPianoSound()
+          }
+        }, touchOptions)
         
         // マウス対応（デスクトップ用）
         body.addEventListener('mousedown', (e) => {
-          startPianoSound()
+          if (!e.target.closest('button')) {
+            startPianoSound()
+          }
         })
         
         body.addEventListener('mouseup', (e) => {
-          stopPianoSound()
+          if (!e.target.closest('button')) {
+            stopPianoSound()
+          }
         })
         
         // マウスが画面外に出た場合も停止
@@ -649,7 +662,8 @@
           document.body.appendChild(warningMsg)
         }
         
-        startButton.addEventListener('click', async (event) => {
+        // iOSでのタッチイベント対応
+        const handleStart = async (event) => {
           // イベントの伝播を停止
           event.preventDefault()
           event.stopPropagation()
@@ -730,7 +744,23 @@
               }
             }, 8000)
           }
+        }
+        
+        // 複数のイベントタイプに対応（iOS対応）
+        startButton.addEventListener('click', handleStart)
+        startButton.addEventListener('touchstart', handleStart)
+        startButton.addEventListener('touchend', (e) => {
+          e.preventDefault()
+          e.stopPropagation()
         })
+        
+        // ボタンのスタイルを調整（iOS対応）
+        startButton.style.cssText += `
+          -webkit-appearance: none;
+          -webkit-tap-highlight-color: transparent;
+          user-select: none;
+          -webkit-user-select: none;
+        `
         
         document.body.appendChild(startButton)
       }
@@ -741,11 +771,15 @@
         generateNewNote()
         setupTouchEvents()
         
-        // 少し遅延してボタンを作成（iOS対応）
+        // iOS対応：より長い遅延でボタンを作成
         setTimeout(() => {
           createStartButton()
-        }, 100)
+          showDebugInfo('スタートボタンを作成しました')
+        }, 500)
       })
+      
+      // iOS Safari用の追加対応
+      document.addEventListener('touchstart', function() {}, { passive: false })
       
       // iOS Safari用の追加イベントリスナー
       document.addEventListener('DOMContentLoaded', () => {
