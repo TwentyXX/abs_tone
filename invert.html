@@ -12,7 +12,7 @@
         margin: 0;
         padding: 20px;
         min-height: 100vh;
-        overflow-y: auto;
+        overflow-y: scroll;
       }
       
       #tonename {
@@ -149,8 +149,6 @@
         <p style="color: #ff6600; font-size: 12px;">※iPhoneの場合：「マイクを開始」ボタンを必ずタップしてください</p>
     </div>
     <script>
-      const tonenames = "ドガレポミファケゾビナテシ"
-      
       // 音名と周波数のマッピング（複数オクターブ対応）
       const noteFrequencies = {
         'ド': [130.81, 261.63, 523.25, 1046.50], // C2, C4, C5, C6
@@ -179,7 +177,8 @@
       let isPlaying = false
       
       function generateNewNote() {
-        currentNote = tonenames[Math.floor(Math.random() * tonenames.length)]
+        const noteArray = ["ド", "ガ", "レ", "ポ", "ミ", "ファ", "ケ", "ゾ", "ビ", "ナ", "テ", "シ"]
+        currentNote = noteArray[Math.floor(Math.random() * noteArray.length)]
         tonename.textContent = currentNote
         document.getElementById('target-note').textContent = currentNote
         correctTime = 0
@@ -531,43 +530,34 @@
       
       // タッチ・マウスイベントの処理
       function setupTouchEvents() {
-        const body = document.body
+        const tonename = document.getElementById('tonename')
         
         // iOS Safari用のタッチイベント設定
         const touchOptions = { passive: false }
         
-        // タッチ開始（スタートボタン以外の場所）
-        body.addEventListener('touchstart', (e) => {
-          // スタートボタンでない場合のみピアノ音を再生
-          if (!e.target.closest('button')) {
-            e.preventDefault()
-            startPianoSound()
-          }
+        // タッチ開始（tonename要素のみ）
+        tonename.addEventListener('touchstart', (e) => {
+          e.preventDefault()
+          startPianoSound()
         }, touchOptions)
         
         // タッチ終了
-        body.addEventListener('touchend', (e) => {
-          if (!e.target.closest('button')) {
-            e.preventDefault()
-            stopPianoSound()
-          }
+        tonename.addEventListener('touchend', (e) => {
+          e.preventDefault()
+          stopPianoSound()
         }, touchOptions)
         
         // マウス対応（デスクトップ用）
-        body.addEventListener('mousedown', (e) => {
-          if (!e.target.closest('button')) {
-            startPianoSound()
-          }
+        tonename.addEventListener('mousedown', (e) => {
+          startPianoSound()
         })
         
-        body.addEventListener('mouseup', (e) => {
-          if (!e.target.closest('button')) {
-            stopPianoSound()
-          }
+        tonename.addEventListener('mouseup', (e) => {
+          stopPianoSound()
         })
         
-        // マウスが画面外に出た場合も停止
-        body.addEventListener('mouseleave', (e) => {
+        // マウスが要素外に出た場合も停止
+        tonename.addEventListener('mouseleave', (e) => {
           stopPianoSound()
         })
       }
