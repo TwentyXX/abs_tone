@@ -144,9 +144,14 @@
     
     <div style="text-align: center; margin-top: 30px; color: #ffff00; font-size: 14px;">
         <p>🎤 音程練習ゲーム</p>
-        <p>表示された音名を正確に3秒間歌うか楽器で演奏してください</p>
+        <p>表示された音名を正確に<span id="targetDurationDisplay">3</span>秒間歌うか楽器で演奏してください</p>
         <p>画面をタッチすると参考音が再生されます</p>
         <p style="color: #ff6600; font-size: 12px;">※iPhoneの場合：「マイクを開始」ボタンを必ずタップしてください</p>
+        <div style="margin-top: 15px; padding: 10px; background-color: #2a2a2a; border-radius: 5px; border: 1px solid #00ff00;">
+            <label style="color: #00ff00; font-weight: bold;">目標キープ時間: </label>
+            <input type="number" id="targetDuration" min="1" max="10" value="3" step="0.5" style="width: 60px; padding: 2px; margin: 0 5px; background-color: #333; color: #00ff00; border: 1px solid #00ff00; border-radius: 3px;">
+            <span style="color: #00ff00;">秒</span>
+        </div>
     </div>
     <script>
       // 音名と周波数のマッピング（複数オクターブ対応）
@@ -175,6 +180,7 @@
       let pianoOscillator = null
       let pianoGain = null
       let isPlaying = false
+      let targetDuration = 3000 // デフォルト3秒（ミリ秒）
       
       function generateNewNote() {
         const noteArray = ["ド", "ガ", "レ", "ポ", "ミ", "ファ", "ケ", "ゾ", "ビ", "ナ", "テ", "シ"]
@@ -375,14 +381,14 @@
           ui.statusIndicator.classList.add('status-correct')
           
           // 進捗バーを更新
-          const progressPercent = Math.min((correctTime / 3000) * 100, 100)
+          const progressPercent = Math.min((correctTime / targetDuration) * 100, 100)
           ui.progressBar.style.width = `${progressPercent}%`
           
           // タイマー表示を更新
           ui.timerDisplay.textContent = `${(correctTime / 1000).toFixed(1)} 秒`
           
-          // 3秒間正確な音程が続いた場合
-          if (correctTime >= 3000) {
+          // 設定された時間正確な音程が続いた場合
+          if (correctTime >= targetDuration) {
             generateNewNote()
             lastTime = 0
           }
@@ -757,11 +763,30 @@
         document.body.appendChild(startButton)
       }
       
+      // 目標時間設定の更新
+      function updateTargetDuration() {
+        const durationInput = document.getElementById('targetDuration')
+        const displaySpan = document.getElementById('targetDurationDisplay')
+        
+        targetDuration = parseFloat(durationInput.value) * 1000 // ミリ秒に変換
+        displaySpan.textContent = durationInput.value
+        
+        showDebugInfo(`目標キープ時間を${durationInput.value}秒に設定しました`)
+      }
+      
       // ページ読み込み時に開始ボタンを表示
       window.addEventListener('load', () => {
         showDebugInfo('ページが読み込まれました')
         generateNewNote()
         setupTouchEvents()
+        
+        // 目標時間設定のイベントリスナーを追加
+        const durationInput = document.getElementById('targetDuration')
+        durationInput.addEventListener('change', updateTargetDuration)
+        durationInput.addEventListener('input', updateTargetDuration)
+        
+        // 初期値を設定
+        updateTargetDuration()
         
         // iOS対応：より長い遅延でボタンを作成
         setTimeout(() => {
