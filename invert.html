@@ -154,21 +154,33 @@
         </div>
     </div>
     <script>
-      // 音名と周波数のマッピング（複数オクターブ対応）
-      const noteFrequencies = {
-        'ド': [130.81, 261.63, 523.25, 1046.50], // C2, C4, C5, C6
-        'ガ': [138.59, 277.18, 554.37, 1108.73], // C#2, C#4, C#5, C#6
-        'レ': [146.83, 293.66, 587.33, 1174.66], // D2, D4, D5, D6
-        'ポ': [155.56, 311.13, 622.25, 1244.51], // D#2, D#4, D#5, D#6
-        'ミ': [164.81, 329.63, 659.25, 1318.51], // E2, E4, E5, E6
-        'ファ': [174.61, 349.23, 698.46, 1396.91], // F2, F4, F5, F6
-        'ケ': [185.00, 369.99, 739.99, 1479.98], // F#2, F#4, F#5, F#6
-        'ゾ': [196.00, 392.00, 783.99, 1567.98], // G2, G4, G5, G6
-        'ビ': [207.65, 415.30, 830.61, 1661.22], // G#2, G#4, G#5, G#6
-        'ナ': [220.00, 440.00, 880.00, 1760.00], // A2, A4, A5, A6
-        'テ': [233.08, 466.16, 932.33, 1864.66], // A#2, A#4, A#5, A#6
-        'シ': [246.94, 493.88, 987.77, 1975.53]  // B2, B4, B5, B6
+      // 音名と周波数のマッピング（実行時計算）
+      function calculateNoteFrequencies() {
+        const noteFrequencies = {}
+        const noteNames = ['ド', 'ガ', 'レ', 'ポ', 'ミ', 'ファ', 'ケ', 'ゾ', 'ビ', 'ナ', 'テ', 'シ']
+        const noteOffsets = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] // C, C#, D, D#, E, F, F#, G, G#, A, A#, B
+        const octaves = [2, 4, 5, 6]
+        
+        // A4 = 440Hz を基準とする
+        const A4_FREQ = 440.0
+        const A4_NOTE_NUMBER = 9 + 4 * 12 // A4のノート番号
+        const SEMITONE_RATIO = Math.pow(2, 1/12)
+        
+        noteNames.forEach((noteName, index) => {
+          const noteOffset = noteOffsets[index]
+          noteFrequencies[noteName] = []
+          
+          octaves.forEach(octave => {
+            const noteNumber = noteOffset + octave * 12
+            const frequency = A4_FREQ * Math.pow(SEMITONE_RATIO, noteNumber - A4_NOTE_NUMBER)
+            noteFrequencies[noteName].push(frequency)
+          })
+        })
+        
+        return noteFrequencies
       }
+      
+      const noteFrequencies = calculateNoteFrequencies()
       
       let audioContext
       let analyser
@@ -272,6 +284,7 @@
       function frequencyToNote(frequency) {
         let minDiff = Infinity
         let closestNote = ''
+        let closestFreq = 0
         
         for (const [note, freqArray] of Object.entries(noteFrequencies)) {
           // 各オクターブの周波数をチェック
@@ -280,12 +293,18 @@
             if (diff < minDiff) {
               minDiff = diff
               closestNote = note
+              closestFreq = freq
             }
           }
         }
         
-        // 許容範囲を±30Hzに拡大（高いオクターブに対応）
-        return minDiff < 30 ? closestNote : null
+        // 周波数に比例した許容範囲を使用（約±50セント相当）
+        // 50セント = 2^(50/1200) ≈ 1.029 なので約2.9%の周波数差
+        const tolerance = closestFreq * 0.035 // 約±60セント（少し余裕を持たせる）
+        
+        console.log(`周波数: ${frequency.toFixed(1)}Hz, 最近音: ${closestNote} (${closestFreq.toFixed(1)}Hz), 差: ${minDiff.toFixed(1)}Hz, 許容範囲: ±${tolerance.toFixed(1)}Hz`)
+        
+        return minDiff < tolerance ? closestNote : null
       }
       
       function getPitch(dataArray) {
