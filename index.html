@@ -699,7 +699,8 @@
                 <span id="whiteNoiseSettings" style="display: none;">
                     再生時間: 
                     <input type="number" id="whiteNoiseDuration" min="0.5" max="10" value="2" step="0.5">
-                    秒
+                    秒　音量: 
+                    <input type="number" id="whiteNoiseVolume" min="0.01" max="1.0" value="0.1" step="0.01">
                 </span>
             </div>
             
@@ -914,6 +915,7 @@
                 this.currentButtonOrder = []; // 現在のボタン順序
                 this.whiteNoiseEnabled = false; // ホワイトノイズ有効
                 this.whiteNoiseDuration = 2; // ホワイトノイズ再生時間（秒）
+                this.whiteNoiseVolume = 0.1; // ホワイトノイズ音量
                 
                 // 楽器の定義（Tone.jsを使用）
                 this.instruments = {};
@@ -1430,8 +1432,9 @@
                 whiteNoiseSource.connect(gainNode);
                 gainNode.connect(this.audioContext.destination);
                 
-                // 音量を調整（楽器音より小さく）
-                gainNode.gain.setValueAtTime(0.1, now);
+                // 設定された音量を使用
+                const volume = this.whiteNoiseVolume;
+                gainNode.gain.setValueAtTime(volume, now);
                 gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
                 
                 whiteNoiseSource.start(now);
@@ -1444,7 +1447,7 @@
                     stopTime: now + duration
                 });
                 
-                console.log(`ホワイトノイズ再生: ${duration}秒`);
+                console.log(`ホワイトノイズ再生: ${duration}秒, 音量: ${volume}`);
             }
             
             getInstrumentVolumeMultiplier(instrumentName) {
@@ -2115,6 +2118,7 @@
                 // ホワイトノイズ設定を取得
                 this.whiteNoiseEnabled = document.getElementById('whiteNoiseEnabled').checked;
                 this.whiteNoiseDuration = parseFloat(document.getElementById('whiteNoiseDuration').value);
+                this.whiteNoiseVolume = parseFloat(document.getElementById('whiteNoiseVolume').value);
                 
                 // ホワイトノイズを再生（問題切替時）
                 if (this.whiteNoiseEnabled && this.correctCount + this.wrongCount > 0) {
@@ -2560,25 +2564,76 @@
             }
             
             showCorrectNotes(correctNotes) {
-                const noteDisplay = document.getElementById('noteDisplay');
-                const noteNames = correctNotes.map(note => {
-                    const noteName = note.slice(0, -1);
-                    return this.noteNames[noteName];
-                });
-                
-                noteDisplay.textContent = noteNames.join(', ');
-                noteDisplay.classList.add('show');
-                
-                // 3秒後に非表示にする
-                setTimeout(() => {
-                    this.hideCorrectNotes();
-                }, 3000);
+                // ボタン回答モードの場合は、ボタンコンテナ内に音名表示を作成
+                if (this.buttonAnswerMode) {
+                    const buttonContainer = document.getElementById('buttonAnswerContainer');
+                    let buttonNoteDisplay = buttonContainer.querySelector('.button-note-display');
+                    
+                    if (!buttonNoteDisplay) {
+                        buttonNoteDisplay = document.createElement('div');
+                        buttonNoteDisplay.className = 'button-note-display';
+                        buttonNoteDisplay.style.cssText = `
+                            position: absolute;
+                            top: -50px;
+                            left: 50%;
+                            transform: translateX(-50%);
+                            font-size: 24px;
+                            font-weight: bold;
+                            color: var(--text-color);
+                            background: var(--container-bg);
+                            padding: 8px 16px;
+                            border-radius: 8px;
+                            border: 2px solid var(--border-color);
+                            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                            z-index: 10;
+                            visibility: hidden;
+                            transition: all 0.3s ease;
+                        `;
+                        buttonContainer.style.position = 'relative';
+                        buttonContainer.appendChild(buttonNoteDisplay);
+                    }
+                    
+                    const noteNames = correctNotes.map(note => {
+                        const noteName = note.slice(0, -1);
+                        return this.noteNames[noteName];
+                    });
+                    
+                    buttonNoteDisplay.textContent = noteNames.join(', ');
+                    buttonNoteDisplay.style.visibility = 'visible';
+                    
+                    // 3秒後に非表示にする
+                    setTimeout(() => {
+                        buttonNoteDisplay.style.visibility = 'hidden';
+                    }, 3000);
+                } else {
+                    // 通常のピアノモードの場合
+                    const noteDisplay = document.getElementById('noteDisplay');
+                    const noteNames = correctNotes.map(note => {
+                        const noteName = note.slice(0, -1);
+                        return this.noteNames[noteName];
+                    });
+                    
+                    noteDisplay.textContent = noteNames.join(', ');
+                    noteDisplay.classList.add('show');
+                    
+                    // 3秒後に非表示にする
+                    setTimeout(() => {
+                        this.hideCorrectNotes();
+                    }, 3000);
+                }
             }
             
             hideCorrectNotes() {
+                // ピアノモードの音名表示を非表示
                 const noteDisplay = document.getElementById('noteDisplay');
                 if (noteDisplay) {
                     noteDisplay.classList.remove('show');
+                }
+                
+                // ボタンモードの音名表示を非表示
+                const buttonNoteDisplay = document.querySelector('.button-note-display');
+                if (buttonNoteDisplay) {
+                    buttonNoteDisplay.style.visibility = 'hidden';
                 }
             }
             
@@ -2683,6 +2738,7 @@
                     randomizeButtonOrder: document.getElementById('randomizeButtonOrder').checked,
                     whiteNoiseEnabled: document.getElementById('whiteNoiseEnabled').checked,
                     whiteNoiseDuration: document.getElementById('whiteNoiseDuration').value,
+                    whiteNoiseVolume: document.getElementById('whiteNoiseVolume').value,
                     selectedNotes: Array.from(this.selectedNotes), // 選択された音名を保存
                     instruments: {}
                 };
@@ -2735,6 +2791,7 @@
                     document.getElementById('randomizeButtonOrder').checked = savedSettings.randomizeButtonOrder || false;
                     document.getElementById('whiteNoiseEnabled').checked = savedSettings.whiteNoiseEnabled || false;
                     document.getElementById('whiteNoiseDuration').value = savedSettings.whiteNoiseDuration || 2;
+                    document.getElementById('whiteNoiseVolume').value = savedSettings.whiteNoiseVolume || 0.1;
                     
                     // 楽器選択状態を復元
                     if (savedSettings.instruments) {
@@ -2759,6 +2816,8 @@
                     this.randomizeButtonOrder = savedSettings.randomizeButtonOrder || false;
                     this.whiteNoiseEnabled = savedSettings.whiteNoiseEnabled || false;
                     this.whiteNoiseDuration = savedSettings.whiteNoiseDuration || 2;
+                    this.whiteNoiseVolume = savedSettings.whiteNoiseVolume || 0.1;
+                    this.whiteNoiseVolume = savedSettings.whiteNoiseVolume || 0.1;
                     this.whiteNoiseEnabled = savedSettings.whiteNoiseEnabled || false;
                     this.whiteNoiseDuration = savedSettings.whiteNoiseDuration || 2;
                     
@@ -3344,6 +3403,11 @@
                 });
                 
                 document.getElementById('whiteNoiseDuration').addEventListener('change', () => {
+                    this.saveSettingsToCookies();
+                });
+                
+                document.getElementById('whiteNoiseVolume').addEventListener('change', () => {
+                    this.whiteNoiseVolume = parseFloat(document.getElementById('whiteNoiseVolume').value);
                     this.saveSettingsToCookies();
                 });
                 
