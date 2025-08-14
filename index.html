@@ -2683,6 +2683,8 @@
                     this.answerSoundEnabled = savedSettings.answerSoundEnabled !== false;
                     this.correctSoundReviewEnabled = savedSettings.correctSoundReviewEnabled !== false;
                     this.noteSelectionMode = savedSettings.noteSelectionMode || false;
+                    this.buttonAnswerMode = savedSettings.buttonAnswerMode || false;
+                    this.randomizeButtonOrder = savedSettings.randomizeButtonOrder || false;
                     
                     // 選択された音名を復元
                     if (savedSettings.selectedNotes) {
