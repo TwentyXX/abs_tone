@@ -485,6 +485,88 @@
             color: white;
             text-shadow: 3px 3px 6px rgba(0,0,0,0.8);
         }
+        
+        .button-answer-container {
+            display: none;
+            margin: 20px auto;
+            max-width: 800px;
+            text-align: center;
+        }
+        
+        .button-answer-container.active {
+            display: block;
+        }
+        
+        .answer-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+            gap: 10px;
+            margin: 20px 0;
+            padding: 20px;
+            background: var(--settings-bg);
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .answer-button {
+            padding: 15px 10px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            border: 2px solid var(--input-border);
+            border-radius: 8px;
+            background: var(--container-bg);
+            color: var(--text-color);
+            transition: all 0.2s ease;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .answer-button:hover {
+            background: #f0f0f0;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        .answer-button.selected {
+            background: #3498db !important;
+            border-color: #2980b9 !important;
+            color: white !important;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(52, 152, 219, 0.4);
+        }
+        
+        .answer-button.correct {
+            background: #4CAF50 !important;
+            border-color: #45a049 !important;
+            color: white !important;
+        }
+        
+        .answer-button.wrong {
+            background: #f44336 !important;
+            border-color: #da190b !important;
+            color: white !important;
+        }
+        
+        [data-theme="dark"] .answer-button:hover {
+            background: #555;
+        }
+        
+        @media (max-width: 480px) {
+            .answer-buttons {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 8px;
+                padding: 15px;
+            }
+            
+            .answer-button {
+                padding: 12px 8px;
+                font-size: 16px;
+                min-height: 50px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -595,6 +677,18 @@
             <div class="setting-group">
                 <label>
                     <input type="checkbox" id="noteSelectionMode"> 出題音名選択モード
+                </label>
+            </div>
+            
+            <div class="setting-group">
+                <label>
+                    <input type="checkbox" id="buttonAnswerMode"> ボタン回答モード
+                </label>
+            </div>
+            
+            <div class="setting-group">
+                <label>
+                    <input type="checkbox" id="randomizeButtonOrder"> ボタン順序ランダム化
                 </label>
             </div>
             
@@ -737,6 +831,12 @@
                 <div class="note-display" id="noteDisplay"></div>
             </div>
             
+            <div class="button-answer-container" id="buttonAnswerContainer">
+                <div class="answer-buttons" id="answerButtons">
+                    <!-- ボタンはJavaScriptで生成 -->
+                </div>
+            </div>
+            
             <div class="controls">
                 <button id="newGame">新しいゲーム</button>
                 <button id="playAgain" disabled>もう一度再生</button>
@@ -798,6 +898,9 @@
                 this.activeOscillators = []; // アクティブなオシレーターを追跡
                 this.sequenceTimeouts = []; // 連音再生のタイムアウトを追跡
                 this.lastKeyTime = 0; // キー入力のデバウンス用
+                this.buttonAnswerMode = false; // ボタン回答モード
+                this.randomizeButtonOrder = false; // ボタン順序ランダム化
+                this.currentButtonOrder = []; // 現在のボタン順序
                 
                 // 楽器の定義（Tone.jsを使用）
                 this.instruments = {};
@@ -866,6 +969,7 @@
                 this.updateDifficultySettings();
                 this.loadDarkModePreference();
                 this.createPiano(); // 設定読み込み後にピアノを作成
+                this.updateAnswerInterface(); // 回答インターフェースを初期化
             }
             
             async initializeAudio() {
@@ -1355,6 +1459,92 @@
                     // 通常モードでは全オクターブ表示
                     this.createNormalPiano();
                 }
+            }
+            
+            createAnswerButtons() {
+                const buttonContainer = document.getElementById('buttonAnswerContainer');
+                const buttonsContainer = document.getElementById('answerButtons');
+                
+                if (!this.buttonAnswerMode) {
+                    buttonContainer.classList.remove('active');
+                    return;
+                }
+                
+                buttonContainer.classList.add('active');
+                buttonsContainer.innerHTML = '';
+                
+                const octaveIgnoreMode = document.getElementById('octaveIgnoreMode').checked;
+                let availableNotes = [];
+                
+                if (octaveIgnoreMode) {
+                    // オクターブ無視モードでは音名のみ
+                    const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+                    availableNotes = notes.map(note => note + '4'); // 表示用に4オクターブを付加
+                } else {
+                    // 通常モードでは設定されたオクターブ範囲の全音
+                    const octaveStart = parseInt(document.getElementById('octaveStart').value);
+                    const octaveEnd = parseInt(document.getElementById('octaveEnd').value);
+                    const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+                    
+                    for (let octave = octaveStart; octave <= octaveEnd; octave++) {
+                        notes.forEach(note => {
+                            availableNotes.push(note + octave);
+                        });
+                    }
+                }
+                
+                // 音名選択モードが有効で選択された音がある場合は制限
+                const noteSelectionModeEnabled = document.getElementById('noteSelectionMode').checked;
+                if (noteSelectionModeEnabled && this.selectedNotes.size > 0) {
+                    const selectedBaseNotes = Array.from(this.selectedNotes).map(note => note.slice(0, -1));
+                    const uniqueBaseNotes = [...new Set(selectedBaseNotes)];
+                    
+                    if (octaveIgnoreMode) {
+                        availableNotes = uniqueBaseNotes.map(note => note + '4');
+                    } else {
+                        const octaveStart = parseInt(document.getElementById('octaveStart').value);
+                        const octaveEnd = parseInt(document.getElementById('octaveEnd').value);
+                        availableNotes = [];
+                        for (let octave = octaveStart; octave <= octaveEnd; octave++) {
+                            uniqueBaseNotes.forEach(baseNote => {
+                                availableNotes.push(baseNote + octave);
+                            });
+                        }
+                    }
+                }
+                
+                // ボタン順序をランダム化するかどうか
+                if (this.randomizeButtonOrder) {
+                    this.currentButtonOrder = [...availableNotes].sort(() => Math.random() - 0.5);
+                } else {
+                    this.currentButtonOrder = [...availableNotes];
+                }
+                
+                // ボタンを作成
+                this.currentButtonOrder.forEach(note => {
+                    const button = document.createElement('button');
+                    button.className = 'answer-button';
+                    button.dataset.note = note;
+                    button.dataset.baseNote = note.slice(0, -1);
+                    button.dataset.keyType = 'answer';
+                    
+                    // ボタンのテキストを設定
+                    const noteName = note.slice(0, -1);
+                    const octave = note.slice(-1);
+                    if (octaveIgnoreMode) {
+                        button.textContent = this.noteNames[noteName];
+                    } else {
+                        button.textContent = this.noteNames[noteName] + octave;
+                    }
+                    
+                    // クリックイベント
+                    button.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.handleKeyClick(note);
+                    });
+                    
+                    buttonsContainer.appendChild(button);
+                });
             }
             
             createOctaveIgnorePiano() {
@@ -1909,6 +2099,13 @@
                     this.createPiano();
                 }
                 
+                // ボタン回答モードの設定を取得
+                this.buttonAnswerMode = document.getElementById('buttonAnswerMode').checked;
+                this.randomizeButtonOrder = document.getElementById('randomizeButtonOrder').checked;
+                
+                // 回答インターフェースを更新
+                this.updateAnswerInterface();
+                
                 // 初心者モードの設定を取得
                 this.beginnerMode = document.getElementById('beginnerMode').checked;
                 
@@ -2317,6 +2514,21 @@
                 }
             }
             
+            updateAnswerInterface() {
+                const piano = document.getElementById('piano');
+                const buttonContainer = document.getElementById('buttonAnswerContainer');
+                
+                if (this.buttonAnswerMode) {
+                    // ボタンモードの場合
+                    piano.style.display = 'none';
+                    this.createAnswerButtons();
+                } else {
+                    // ピアノモードの場合
+                    piano.style.display = 'block';
+                    buttonContainer.classList.remove('active');
+                }
+            }
+            
             clearKeyHighlights() {
                 // 回答用の鍵盤のみをクリア
                 const keys = document.querySelectorAll('[data-key-type="answer"]');
@@ -2399,6 +2611,8 @@
                     answerSoundEnabled: document.getElementById('answerSoundEnabled').checked,
                     correctSoundReviewEnabled: document.getElementById('correctSoundReviewEnabled').checked,
                     noteSelectionMode: document.getElementById('noteSelectionMode').checked,
+                    buttonAnswerMode: document.getElementById('buttonAnswerMode').checked,
+                    randomizeButtonOrder: document.getElementById('randomizeButtonOrder').checked,
                     selectedNotes: Array.from(this.selectedNotes), // 選択された音名を保存
                     instruments: {}
                 };
@@ -2447,6 +2661,8 @@
                     document.getElementById('answerSoundEnabled').checked = savedSettings.answerSoundEnabled !== false; // デフォルトtrue
                     document.getElementById('correctSoundReviewEnabled').checked = savedSettings.correctSoundReviewEnabled !== false; // デフォルトtrue
                     document.getElementById('noteSelectionMode').checked = savedSettings.noteSelectionMode || false;
+                    document.getElementById('buttonAnswerMode').checked = savedSettings.buttonAnswerMode || false;
+                    document.getElementById('randomizeButtonOrder').checked = savedSettings.randomizeButtonOrder || false;
                     
                     // 楽器選択状態を復元
                     if (savedSettings.instruments) {
@@ -3023,6 +3239,20 @@
                     if (e.target.checked) {
                         this.createNoteSelectionPiano();
                         this.updateSelectedNotes();
+                    }
+                    this.saveSettingsToCookies();
+                });
+                
+                document.getElementById('buttonAnswerMode').addEventListener('change', (e) => {
+                    this.buttonAnswerMode = e.target.checked;
+                    this.updateAnswerInterface();
+                    this.saveSettingsToCookies();
+                });
+                
+                document.getElementById('randomizeButtonOrder').addEventListener('change', (e) => {
+                    this.randomizeButtonOrder = e.target.checked;
+                    if (this.buttonAnswerMode) {
+                        this.createAnswerButtons();
                     }
                     this.saveSettingsToCookies();
                 });
