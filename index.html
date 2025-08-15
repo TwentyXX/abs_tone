@@ -1544,28 +1544,32 @@
                 let availableNotes = [];
                 
                 if (this.vowelInputMode) {
-                    // 母音入力モードの場合は重複なしの4つの母音のみ
-                    const vowelToNotes = {
-                        'あ': ['C'],
-                        'い': ['C#'],
-                        'え': ['D'],
-                        'お': ['D#']
-                    };
+                    // 母音入力モードの場合は4つの母音ボタンのみ表示
+                    const vowelButtons = [
+                        { vowel: 'あ', note: 'C' },
+                        { vowel: 'い', note: 'C#' },
+                        { vowel: 'え', note: 'D' },
+                        { vowel: 'お', note: 'D#' }
+                    ];
                     
-                    if (octaveIgnoreMode) {
-                        // オクターブ無視モードでは4オクターブで表示
-                        availableNotes = Object.values(vowelToNotes).flat().map(note => note + '4');
-                    } else {
-                        // 通常モードでは設定されたオクターブ範囲で展開
-                        const octaveStart = parseInt(document.getElementById('octaveStart').value);
-                        const octaveEnd = parseInt(document.getElementById('octaveEnd').value);
+                    // 母音ボタンを作成
+                    vowelButtons.forEach(({ vowel, note }) => {
+                        const button = document.createElement('button');
+                        button.className = 'answer-button';
+                        button.dataset.vowel = vowel;
+                        button.dataset.baseNote = note;
+                        button.dataset.keyType = 'vowel';
+                        button.textContent = vowel;
                         
-                        for (let octave = octaveStart; octave <= octaveEnd; octave++) {
-                            Object.values(vowelToNotes).flat().forEach(note => {
-                                availableNotes.push(note + octave);
-                            });
-                        }
-                    }
+                        // クリックイベント
+                        button.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            this.handleVowelClick(vowel);
+                        });
+                        
+                        buttonsContainer.appendChild(button);
+                    });
+                    return; // 母音モードの場合はここで終了
                 } else {
                     // 通常モード（母音入力でない場合）
                     if (octaveIgnoreMode) {
@@ -1624,20 +1628,10 @@
                     // ボタンのテキストを設定
                     const noteName = note.slice(0, -1);
                     const octave = note.slice(-1);
-                    if (this.vowelInputMode) {
-                        // 母音入力モードの場合
-                        if (octaveIgnoreMode) {
-                            button.textContent = this.vowelNames[noteName];
-                        } else {
-                            button.textContent = this.vowelNames[noteName] + octave;
-                        }
+                    if (octaveIgnoreMode) {
+                        button.textContent = this.noteNames[noteName];
                     } else {
-                        // 通常モードの場合
-                        if (octaveIgnoreMode) {
-                            button.textContent = this.noteNames[noteName];
-                        } else {
-                            button.textContent = this.noteNames[noteName] + octave;
-                        }
+                        button.textContent = this.noteNames[noteName] + octave;
                     }
                     
                     // クリックイベント
@@ -2412,9 +2406,31 @@
                 }
             }
             
+            async handleVowelClick(vowel) {
+                if (!this.gameActive || this.answered) {
+                    console.log(`handleVowelClick ignored: gameActive=${this.gameActive}, answered=${this.answered}`);
+                    return;
+                }
+                
+                console.log(`handleVowelClick processing: ${vowel}`);
+                
+                // 母音ボタンの選択をトグルする
+                this.toggleVowelSelection(vowel);
+                
+                // 時限爆弾モードでは即座に答え合わせ
+                if (this.timeBombMode) {
+                    setTimeout(() => {
+                        this.checkAnswer();
+                    }, 200);
+                } else {
+                    // 選択状態に応じて答え合わせボタンを有効化
+                    this.updateCheckAnswerButton();
+                }
+            }
+            
             updateCheckAnswerButton() {
-                // 回答用の鍵盤で選択されたキーのみをカウント
-                const selectedKeys = document.querySelectorAll('[data-key-type="answer"].selected');
+                // 回答用の鍵盤または母音ボタンで選択されたキーのみをカウント
+                const selectedKeys = document.querySelectorAll('[data-key-type="answer"].selected, [data-key-type="vowel"].selected');
                 const checkAnswerBtn = document.getElementById('checkAnswer');
                 checkAnswerBtn.disabled = selectedKeys.length === 0;
             }
@@ -2436,6 +2452,23 @@
                 }
             }
             
+            toggleVowelSelection(vowel) {
+                // 母音ボタンのみを対象とする
+                const button = document.querySelector(`[data-vowel="${vowel}"][data-key-type="vowel"]`);
+                if (!button) {
+                    console.log(`Vowel button not found for vowel: ${vowel}`);
+                    return;
+                }
+                
+                if (button.classList.contains('selected')) {
+                    button.classList.remove('selected');
+                    console.log(`Deselected vowel: ${vowel}`);
+                } else {
+                    button.classList.add('selected');
+                    console.log(`Selected vowel: ${vowel}`);
+                }
+            }
+            
             checkAnswer() {
                 if (!this.gameActive || this.answered) return;
                 
@@ -2447,39 +2480,58 @@
                     this.stopTimer();
                 }
                 
-                // 回答用の鍵盤で選択されたキーのみを取得
-                const selectedKeys = document.querySelectorAll('[data-key-type="answer"].selected');
-                const selectedNotes = Array.from(selectedKeys).map(key => key.dataset.note);
+                let selectedNotes = [];
+                let isCorrect = false;
                 const correctNotes = this.currentQuestion.notes;
                 
-                let isCorrect = false;
-                
-                if (this.octaveIgnoreMode) {
-                    // オクターブ無視モードでは音名のみで比較
-                    const selectedBaseNotes = Array.from(selectedKeys).map(key => key.dataset.baseNote);
-                    const correctBaseNotes = correctNotes.map(note => note.slice(0, -1));
+                if (this.vowelInputMode) {
+                    // 母音入力モードの場合
+                    const selectedVowels = Array.from(document.querySelectorAll('[data-key-type="vowel"].selected')).map(button => button.dataset.vowel);
+                    const correctVowels = correctNotes.map(note => this.vowelNames[note.slice(0, -1)]);
+                    
+                    selectedNotes = selectedVowels; // ログ用
                     
                     if (this.currentQuestion.type === 'single') {
-                        isCorrect = selectedBaseNotes.length === 1 && selectedBaseNotes[0] === correctBaseNotes[0];
+                        isCorrect = selectedVowels.length === 1 && selectedVowels[0] === correctVowels[0];
                     } else if (this.currentQuestion.type === 'sequence') {
-                        isCorrect = selectedBaseNotes.length === correctBaseNotes.length &&
-                                   selectedBaseNotes.every((note, index) => note === correctBaseNotes[index]);
+                        isCorrect = selectedVowels.length === correctVowels.length &&
+                                   selectedVowels.every((vowel, index) => vowel === correctVowels[index]);
                     } else if (this.currentQuestion.type === 'chord') {
-                        isCorrect = selectedBaseNotes.length === correctBaseNotes.length &&
-                                   selectedBaseNotes.every(note => correctBaseNotes.includes(note));
+                        isCorrect = selectedVowels.length === correctVowels.length &&
+                                   selectedVowels.every(vowel => correctVowels.includes(vowel));
                     }
                 } else {
-                    // 通常モードでは完全一致
-                    if (this.currentQuestion.type === 'single') {
-                        isCorrect = selectedNotes.length === 1 && selectedNotes[0] === correctNotes[0];
-                    } else if (this.currentQuestion.type === 'sequence') {
-                        // 連音の場合は順序も考慮
-                        isCorrect = selectedNotes.length === correctNotes.length &&
-                                   selectedNotes.every((note, index) => note === correctNotes[index]);
-                    } else if (this.currentQuestion.type === 'chord') {
-                        // 和音の場合は順序は関係なし
-                        isCorrect = selectedNotes.length === correctNotes.length &&
-                                   selectedNotes.every(note => correctNotes.includes(note));
+                    // 通常モード
+                    const selectedKeys = document.querySelectorAll('[data-key-type="answer"].selected');
+                    selectedNotes = Array.from(selectedKeys).map(key => key.dataset.note);
+                    
+                    if (this.octaveIgnoreMode) {
+                        // オクターブ無視モードでは音名のみで比較
+                        const selectedBaseNotes = Array.from(selectedKeys).map(key => key.dataset.baseNote);
+                        const correctBaseNotes = correctNotes.map(note => note.slice(0, -1));
+                        
+                        if (this.currentQuestion.type === 'single') {
+                            isCorrect = selectedBaseNotes.length === 1 && selectedBaseNotes[0] === correctBaseNotes[0];
+                        } else if (this.currentQuestion.type === 'sequence') {
+                            isCorrect = selectedBaseNotes.length === correctBaseNotes.length &&
+                                       selectedBaseNotes.every((note, index) => note === correctBaseNotes[index]);
+                        } else if (this.currentQuestion.type === 'chord') {
+                            isCorrect = selectedBaseNotes.length === correctBaseNotes.length &&
+                                       selectedBaseNotes.every(note => correctBaseNotes.includes(note));
+                        }
+                    } else {
+                        // 通常モードでは完全一致
+                        if (this.currentQuestion.type === 'single') {
+                            isCorrect = selectedNotes.length === 1 && selectedNotes[0] === correctNotes[0];
+                        } else if (this.currentQuestion.type === 'sequence') {
+                            // 連音の場合は順序も考慮
+                            isCorrect = selectedNotes.length === correctNotes.length &&
+                                       selectedNotes.every((note, index) => note === correctNotes[index]);
+                        } else if (this.currentQuestion.type === 'chord') {
+                            // 和音の場合は順序は関係なし
+                            isCorrect = selectedNotes.length === correctNotes.length &&
+                                       selectedNotes.every(note => correctNotes.includes(note));
+                        }
                     }
                 }
                 
@@ -2704,8 +2756,8 @@
             }
             
             clearKeyHighlights() {
-                // 回答用の鍵盤のみをクリア
-                const keys = document.querySelectorAll('[data-key-type="answer"]');
+                // 回答用の鍵盤と母音ボタンをクリア
+                const keys = document.querySelectorAll('[data-key-type="answer"], [data-key-type="vowel"]');
                 keys.forEach(key => {
                     key.classList.remove('correct', 'wrong', 'selected');
                 });
