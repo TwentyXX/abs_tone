@@ -1543,39 +1543,65 @@
                 const octaveIgnoreMode = document.getElementById('octaveIgnoreMode').checked;
                 let availableNotes = [];
                 
-                if (octaveIgnoreMode) {
-                    // オクターブ無視モードでは音名のみ
-                    const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-                    availableNotes = notes.map(note => note + '4'); // 表示用に4オクターブを付加
-                } else {
-                    // 通常モードでは設定されたオクターブ範囲の全音
-                    const octaveStart = parseInt(document.getElementById('octaveStart').value);
-                    const octaveEnd = parseInt(document.getElementById('octaveEnd').value);
-                    const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-                    
-                    for (let octave = octaveStart; octave <= octaveEnd; octave++) {
-                        notes.forEach(note => {
-                            availableNotes.push(note + octave);
-                        });
-                    }
-                }
-                
-                // 音名選択モードが有効で選択された音がある場合は制限
-                const noteSelectionModeEnabled = document.getElementById('noteSelectionMode').checked;
-                if (noteSelectionModeEnabled && this.selectedNotes.size > 0) {
-                    const selectedBaseNotes = Array.from(this.selectedNotes).map(note => note.slice(0, -1));
-                    const uniqueBaseNotes = [...new Set(selectedBaseNotes)];
+                if (this.vowelInputMode) {
+                    // 母音入力モードの場合は重複なしの4つの母音のみ
+                    const vowelToNotes = {
+                        'あ': ['C'],
+                        'い': ['C#'],
+                        'え': ['D'],
+                        'お': ['D#']
+                    };
                     
                     if (octaveIgnoreMode) {
-                        availableNotes = uniqueBaseNotes.map(note => note + '4');
+                        // オクターブ無視モードでは4オクターブで表示
+                        availableNotes = Object.values(vowelToNotes).flat().map(note => note + '4');
                     } else {
+                        // 通常モードでは設定されたオクターブ範囲で展開
                         const octaveStart = parseInt(document.getElementById('octaveStart').value);
                         const octaveEnd = parseInt(document.getElementById('octaveEnd').value);
-                        availableNotes = [];
+                        
                         for (let octave = octaveStart; octave <= octaveEnd; octave++) {
-                            uniqueBaseNotes.forEach(baseNote => {
-                                availableNotes.push(baseNote + octave);
+                            Object.values(vowelToNotes).flat().forEach(note => {
+                                availableNotes.push(note + octave);
                             });
+                        }
+                    }
+                } else {
+                    // 通常モード（母音入力でない場合）
+                    if (octaveIgnoreMode) {
+                        // オクターブ無視モードでは音名のみ
+                        const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+                        availableNotes = notes.map(note => note + '4'); // 表示用に4オクターブを付加
+                    } else {
+                        // 通常モードでは設定されたオクターブ範囲の全音
+                        const octaveStart = parseInt(document.getElementById('octaveStart').value);
+                        const octaveEnd = parseInt(document.getElementById('octaveEnd').value);
+                        const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+                        
+                        for (let octave = octaveStart; octave <= octaveEnd; octave++) {
+                            notes.forEach(note => {
+                                availableNotes.push(note + octave);
+                            });
+                        }
+                    }
+                    
+                    // 音名選択モードが有効で選択された音がある場合は制限
+                    const noteSelectionModeEnabled = document.getElementById('noteSelectionMode').checked;
+                    if (noteSelectionModeEnabled && this.selectedNotes.size > 0) {
+                        const selectedBaseNotes = Array.from(this.selectedNotes).map(note => note.slice(0, -1));
+                        const uniqueBaseNotes = [...new Set(selectedBaseNotes)];
+                        
+                        if (octaveIgnoreMode) {
+                            availableNotes = uniqueBaseNotes.map(note => note + '4');
+                        } else {
+                            const octaveStart = parseInt(document.getElementById('octaveStart').value);
+                            const octaveEnd = parseInt(document.getElementById('octaveEnd').value);
+                            availableNotes = [];
+                            for (let octave = octaveStart; octave <= octaveEnd; octave++) {
+                                uniqueBaseNotes.forEach(baseNote => {
+                                    availableNotes.push(baseNote + octave);
+                                });
+                            }
                         }
                     }
                 }
@@ -3541,11 +3567,10 @@
                     // 母音入力モードの場合のキーマッピング
                     if (this.vowelInputMode && this.buttonAnswerMode) {
                         keyMap = {
-                            'KeyA': 'C#',  // あ -> ガ (C#)
-                            'KeyI': 'E',   // い -> ミ (E)
-                            'KeyU': 'C',   // う -> ド (C) - 母音「う」に最も近い「お」音のド
+                            'KeyA': 'C',   // あ -> ド (C)
+                            'KeyI': 'C#',  // い -> ガ (C#)
                             'KeyE': 'D',   // え -> レ (D)
-                            'KeyO': 'C'    // お -> ド (C)
+                            'KeyO': 'D#'   // お -> ポ (D#)
                         };
                     }
                     
