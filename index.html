@@ -576,6 +576,37 @@
             <a href="invert.html" style="color: #3498db; text-decoration: none; font-size: 16px; padding: 8px 16px; border: 2px solid #3498db; border-radius: 5px; transition: all 0.3s ease;">🎵 音程練習ゲームへ</a>
         </div>
         
+        <div class="game-area">
+            <div class="result" id="result"></div>
+            <div class="piano" id="piano">
+                <!-- ピアノ鍵盤はJavaScriptで生成 -->
+                <div class="note-display" id="noteDisplay"></div>
+            </div>
+            
+            <div class="button-answer-container" id="buttonAnswerContainer">
+                <div class="answer-buttons" id="answerButtons">
+                    <!-- ボタンはJavaScriptで生成 -->
+                </div>
+            </div>
+            
+            <div class="controls">
+                <button id="newGame">新しいゲーム</button>
+                <button id="playAgain" disabled>もう一度再生</button>
+                <button id="stopSound" disabled style="background: #f39c12;">出題ストップ</button>
+                <button id="checkAnswer" disabled>答え合わせ (スペースキー)</button>
+                <button id="reviewCorrectSound" disabled style="background: #9b59b6; display: none;">正解音おさらい</button>
+                <button id="nextQuestion" disabled>次の問題</button>
+                <button id="clearLog" onclick="game.clearLog()">ログクリア</button>
+                <button id="clearAllData" onclick="game.clearAllData()" style="background: #e74c3c;">全データクリア</button>
+            </div>
+            <div class="score">
+                正解: <span id="correct">0</span> / 不正解: <span id="wrong">0</span>
+            </div>
+            
+            <div class="question" id="question">
+                「新しいゲーム」を押して開始してください
+            </div>
+            
         <div class="settings">
             <div class="setting-group">
                 <label>難易度:</label>
@@ -833,40 +864,9 @@
                     </label>
                 </div>
             </div>
-        </div>
         </details>
-        <div class="game-area">
-            <div class="score">
-                正解: <span id="correct">0</span> / 不正解: <span id="wrong">0</span>
-            </div>
+        </div>
             
-            <div class="question" id="question">
-                「新しいゲーム」を押して開始してください
-            </div>
-            
-            <div class="piano" id="piano">
-                <!-- ピアノ鍵盤はJavaScriptで生成 -->
-                <div class="note-display" id="noteDisplay"></div>
-            </div>
-            
-            <div class="button-answer-container" id="buttonAnswerContainer">
-                <div class="answer-buttons" id="answerButtons">
-                    <!-- ボタンはJavaScriptで生成 -->
-                </div>
-            </div>
-            
-            <div class="controls">
-                <button id="newGame">新しいゲーム</button>
-                <button id="playAgain" disabled>もう一度再生</button>
-                <button id="stopSound" disabled style="background: #f39c12;">出題ストップ</button>
-                <button id="checkAnswer" disabled>答え合わせ (スペースキー)</button>
-                <button id="reviewCorrectSound" disabled style="background: #9b59b6; display: none;">正解音おさらい</button>
-                <button id="nextQuestion" disabled>次の問題</button>
-                <button id="clearLog" onclick="game.clearLog()">ログクリア</button>
-                <button id="clearAllData" onclick="game.clearAllData()" style="background: #e74c3c;">全データクリア</button>
-            </div>
-            
-            <div class="result" id="result"></div>
             <div style="margin-top: 20px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                     <label for="logOutput" style="font-weight: bold;">ゲームログ:</label>
